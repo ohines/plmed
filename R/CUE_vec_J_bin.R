@@ -15,6 +15,7 @@
 #' @param Sig Constant covariance matrix must be prespecified when using \code{'Two-step'} method.
 #' @return A list containing the newton-raphson step for use with \code{\link[plmed]{newton_raph}}
 #' as well as variance and score estimates.
+#' @export
 CUE_vec_J_bin <- function(par,X,M,Y,Z.matrix,method='G',med_prop=NULL,Sig=NULL){
   theta=par
   N = length(M)

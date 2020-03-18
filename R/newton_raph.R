@@ -27,6 +27,7 @@
 #'
 #' newton_raph(vec_J,Max.it=1000,prec=1e-6,par0=c(0,0),step.scale=1)
 #'
+#' @export
 newton_raph <- function(vec_J,Max.it,prec,par0,step.scale,...){
   # For usage about step.scale see:
   # https://en.wikipedia.org/wiki/Newton%27s_method_in_optimization

@@ -20,7 +20,7 @@
 #' variables are taken from environment(formula), typically the environment from
 #' which \code{plmed} is called.
 #'
-#' @return An opject of class \code{plmed} with unconstrained parameter estimates,
+#' @return An object of class \code{plmed} with unconstrained parameter estimates,
 #'  estimated standard errors, Wald based and CUE score based test statistics.
 #' @examples
 #' #Example on Generated data
@@ -45,6 +45,7 @@
 #'       reformulate(Z.formula,response='job_seek'),
 #'       reformulate(Z.formula,response='depress2'),
 #'       data=jobs)
+#' @export
 plmed <- function(exposure.formula,mediator.formula,outcome.formula,
                   data){
   cl <- match.call()

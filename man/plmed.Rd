@@ -23,7 +23,7 @@ variables are taken from environment(formula), typically the environment from
 which \code{plmed} is called.}
 }
 \value{
-An opject of class \code{plmed} with unconstrained parameter estimates,
+An object of class \code{plmed} with unconstrained parameter estimates,
  estimated standard errors, Wald based and CUE score based test statistics.
 }
 \description{
