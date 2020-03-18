@@ -122,7 +122,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   a
 }
 
-
+#' @export
 print.plmed <- function(object){
   a <- object
 
