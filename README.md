@@ -12,7 +12,7 @@ It may be necessary to also run
 ```
 To uninstall:
 ```
-remove.packages(plmed) if required
+remove.packages(plmed)
 ```
 To see documentation
 ```
