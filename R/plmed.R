@@ -50,8 +50,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
                   data){
   cl <- match.call()
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("exposure.formula","mediator.formula","outcome.formula",
-               "data"),names(mf), 0L)
+  m <- match(c("exposure.formula","mediator.formula","outcome.formula","data"),names(mf), 0L)
 
   mfs <- lapply(1:3,function(i){
     x <- as.list(mf[m[c(i,4)]])
@@ -59,27 +58,26 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     x$drop.unused.levels <- TRUE
     do.call(stats::model.frame,x,envir = parent.frame(3))
   })
-
+  
+  Zt <- sapply(1:3,function(i){
+    x <- as.list(mf[m[i]])
+    names(x)[1]<-'x'
+    attr(do.call(stats::terms,x),'term.labels')
+  })
+  Zf = append(list(formula = reformulate(unlist(Zt)),
+                   drop.unused.levels = TRUE),
+                   as.list(mf[m[4]]))
+  Z = do.call(stats::model.frame,Zf,envir = parent.frame())
+  Z = model.matrix(Z)
+  Z.na = any(is.na(Z))
+  if(Z.na){
+    stop(gettextf("Confounder matrices contain missing values"), domain = NA)}
+  
   X <- model.response(mfs[[1]], "numeric")
   M <- model.response(mfs[[2]], "numeric")
   Y <- model.response(mfs[[3]], "numeric")
 
-  Z <- model.matrix(attr(mfs[[1]], "terms"),mfs[[1]])
-  #M.z <- model.matrix(attr(mfs[[2]], "terms"),mfs[[2]])
-  #Y.z <- model.matrix(attr(mfs[[3]], "terms"),mfs[[3]])
-  #Z.cond = (ncol(X.z) == ncol(M.z)) & (ncol(X.z) == ncol(Y.z))
-  #Z.na = any(is.na(X.z)) | any(is.na(M.z)) | any(is.na(Y.z))
-  Z.na = any(is.na(Z))
-
-  #if(!Z.cond){
-  #  stop(gettextf("Confounder matrices are not of the same dimensions: Exposure:%d, Mediator:%d, Outcome:%d",
-  #                ncol(X.z),ncol(M.z),ncol(Y.z)), domain = NA)}
-  if(Z.na){
-    stop(gettextf("Confounder matrices contain missing values"), domain = NA)}
-
   #Get initial parameter estimates for Newton Raphson using MLE
-  #M.lm <- lm.fit(cbind(X,M.z),M)$coefficients
-  #Y.lm <- lm.fit(cbind(M,X,Y.z),Y)$coefficients
   X.lm <- glm.fit(Z,X,family=binomial())$coefficients
   M.lm <- lm.fit(cbind(X,Z),M)$coefficients
   Y.lm <- lm.fit(cbind(M,X,Z),Y)$coefficients
