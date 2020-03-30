@@ -64,15 +64,14 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     names(x)[1]<-'x'
     attr(do.call(stats::terms,x),'term.labels')
   })
-  Zf = append(list(formula = reformulate(unlist(Zt)),
+  Zf = append(list(object = reformulate(unlist(Zt)),
                    drop.unused.levels = TRUE),
                    as.list(mf[m[4]]))
-  Z = do.call(stats::model.frame,Zf,envir = parent.frame())
-  Z = model.matrix(Z)
+  Z = do.call(stats::model.matrix,Zf,envir = parent.frame())
   Z.na = any(is.na(Z))
   if(Z.na){
     stop(gettextf("Confounder matrices contain missing values"), domain = NA)}
-  
+
   X <- model.response(mfs[[1]], "numeric")
   M <- model.response(mfs[[2]], "numeric")
   Y <- model.response(mfs[[3]], "numeric")
@@ -104,7 +103,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
 
 
   fit.cue <- function(scale,mp,method){newton_raph(CUE_vec_J_bin,Max.it=2000,prec=1e-5,
-                                            par0=c(theta.unc,0),step.scale=scale,
+                                            par0=c(as.vector(theta.unc),0),step.scale=scale,
                                             X=X,M=M,Y=Y,Z.matrix=Z,
                                             method=method,med_prop=mp)}
   fit.trycatch <- function(mp,method) {
