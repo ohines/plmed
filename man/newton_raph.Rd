@@ -4,22 +4,31 @@
 \alias{newton_raph}
 \title{Multivariate Newton-Raphson fitting method}
 \usage{
-newton_raph(vec_J, Max.it, prec, par0, step.scale, ...)
+newton_raph(
+  vec_J,
+  par0,
+  ...,
+  LSearch = FALSE,
+  w = rep.int(1, length(par0)),
+  Max.it = 2000,
+  prec = 1e-05
+)
 }
 \arguments{
-\item{vec_J}{a function which returns newton-raphson steps via \code{$step}}
-
-\item{Max.it}{Maximum number of iterations}
-
-\item{prec}{Parameter precision tolerance. Iteration will stop when the step is
-smaller than the precision for all parameters.}
+\item{vec_J}{a function which returns newton-raphson steps via \code{$step} and the functions via \code{$vec}}
 
 \item{par0}{Initial values for the parameters to be optimized over.}
 
-\item{step.scale}{Scale the step size using a size on the interval (0,1]. This is sometimes
-referred to as the relaxed or damped Newton's method.}
-
 \item{...}{Further arguments to be passed to \code{vec_J}}
+
+\item{LSearch}{Option to perform the Backtracking line search algorithm. Defaults to \code{FALSE}}
+
+\item{w}{Weights for Backtracking algorithm. Must be non-negative with length equal to \code{length(par0)}}
+
+\item{Max.it}{Maximum number of iterations (Function calls)}
+
+\item{prec}{Parameter precision tolerance. Iteration will stop when the step is
+smaller than the precision for all parameters.}
 }
 \value{
 A list containing the \code{par} estimates and
@@ -27,7 +36,8 @@ an evaluation of the \code{vec_J} function at these parameters.
 }
 \description{
 \code{newton_raph} provides an environment for performing iterated
-Newton Raphson root finding of multivariate functions
+Newton Raphson root finding of multivariate functions with an optional Backtracking line search,
+For more on line search see: http://cosmos.phy.tufts.edu/~danilo/AST16/Material/RootFinding.pdf page479
 }
 \examples{
 #Optimisation of the function f(x,y) = (x*exp(y) - 1, -1-x^2 + y)
@@ -37,9 +47,9 @@ vec_J <- function(par){
     f = c(x*exp(y) - 1, -1-x^2 + y)
     fdash = matrix(c(exp(y),-2*x,x*exp(y),1),ncol=2)
     step = solve(fdash,f)
-    return(list(step=step))
+    return(list(step=step, vec=f))
 }
 
-newton_raph(vec_J,Max.it=1000,prec=1e-6,par0=c(0,0),step.scale=1)
+newton_raph(vec_J,par0=c(0,0))
 
 }

@@ -4,20 +4,11 @@
 \alias{CUE_vec_J_bin}
 \title{Newton Raphson Steps for plmed fitting}
 \usage{
-CUE_vec_J_bin(
-  par,
-  X,
-  M,
-  Y,
-  Z.matrix,
-  method = "G",
-  med_prop = NULL,
-  Sig = NULL
-)
+CUE_vec_J_bin(par, X, M, Y, Z, method = "G", med_prop = NULL, Sig = NULL)
 }
 \arguments{
 \item{par}{vector containing beta and augmented nuisance parameters, optionally with a
-lagrange multiplier a the final componenet.}
+lagrange multiplier the final componenet.}
 
 \item{X}{Vector of exposures}
 
@@ -25,7 +16,7 @@ lagrange multiplier a the final componenet.}
 
 \item{Y}{Vector of outcomes}
 
-\item{Z.matrix}{Design matrix of confounder models}
+\item{Z}{Design matrix of confounder models}
 
 \item{method}{The method to be used. See ‘Details’.}
 
