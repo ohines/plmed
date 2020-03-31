@@ -27,7 +27,13 @@ An object of class \code{plmed} with unconstrained parameter estimates,
  estimated standard errors, Wald based and CUE score based test statistics.
 }
 \description{
-
+\code{plmed} is used to fit mediation effects for a continuous outcome
+given a single continuous mediator, binary exposure, and set of
+variables which adjust for confounding. It is assumed that the
+outcome and mediator models are linear and the exposure model is
+logisitic. It uses a G-estimation procedure to estimate indirect and
+direct effect, with a Bias-Reduced strategy used to estimate
+parameters in confounder models. Missing data behaviour is always \code{{\link[stats]{formula}=na.omit}}
 }
 \examples{
 #Example on Generated data
