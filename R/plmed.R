@@ -6,7 +6,7 @@
 #' outcome and mediator models are linear and the exposure model is
 #' logisitic. It uses a G-estimation procedure to estimate indirect and
 #' direct effect, with a Bias-Reduced strategy used to estimate
-#' parameters in confounder models. Missing data behaviour is always \code{{\link[stats]{formula}=na.omit}
+#' parameters in confounder models. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}
 #'
 #' @param exposure.formula an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 #' that class) where the left hand side of the formula contains the binary exposure variable of interest.

@@ -57,7 +57,7 @@ newton_raph <- function(vec_J,par0,...,LSearch = FALSE, w=rep.int(1,length(par0)
         fK = sum(stepK$vec*stepK$vec*w)
         
         accept = fK <= (1-2e-4*lam)*f0 #accept step with condition
-        cat('Trial =',fK,'previous = ',f0, 'accept = ', accept, 'lam was',lam,'\n')
+        #cat('Trial =',fK,'previous = ',f0, 'accept = ', accept, 'lam was',lam,'\n')
         if(accept|lam==0.01){
           par  = parK
           f0 = fK
