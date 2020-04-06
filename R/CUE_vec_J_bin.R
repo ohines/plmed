@@ -306,6 +306,7 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     #### Return output ####
     vec = c(dfdbeta,V)
     J = rbind(d2fdbetadtheta,dV1dtheta,dV2dtheta,dV3dtheta,dV4dtheta,dV5dtheta,dV6dtheta)
+    lambda = theta[d] #the lagrange multiplier
     
   }else if (G){#Use G-estimation equations as required
     vec = c(U,V)
@@ -316,6 +317,7 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     dU2dbetadbeta = matrix(c(0,MX,XX,MX,0,0,XX,0,0),nrow=3)/N
     vec = 2*N*crossprod(AU,dUdbeta) #dfdbeta with Sig constant
     J   = 2*N*(crossprod(dUdbeta,A%*%dUdbeta) + AU[2]*dU2dbetadbeta) #d2fdbetadbeta with Sig constant
+    lambda = theta[d] #the lagrange multiplier
     d = 4
   }
 
@@ -323,9 +325,9 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     vec = c(vec,  theta[1]*theta[2]*(1-med_prop)-med_prop*theta[3]   ) #extend vec and J
     J = cbind(rbind(J,0),0)
     dgdb = c(theta[2]*(1-med_prop),theta[1]*(1-med_prop),-med_prop) #first derivative of constraint
-    vec[1:3] <- vec[1:3] +theta[d]*dgdb  #theta[d] is the lagrange multiplier (lambda)
-    J[1,2] <- J[1,2] + theta[d]*(1-med_prop) #non zero second derivative of constraint
-    J[2,1] <- J[2,1] + theta[d]*(1-med_prop)
+    vec[1:3] <- vec[1:3] +lambda*dgdb  #theta[d] is the lagrange multiplier (lambda)
+    J[1,2] <- J[1,2] + lambda*(1-med_prop) #non zero second derivative of constraint
+    J[2,1] <- J[2,1] + lambda*(1-med_prop)
     J[1:3,d] <- J[d,1:3] <- dgdb
   }
 

@@ -12,6 +12,7 @@
 #' @param Max.it Maximum number of iterations (Function calls)
 #' @param prec Parameter precision tolerance. Iteration will stop when the step is
 #' smaller than the precision for all parameters.
+#' @param step.scale Optional scaling step to perform damped Newton Raphson.
 #'
 #' @return A list containing the \code{par} estimates and
 #' an evaluation of the \code{vec_J} function at these parameters.
@@ -29,7 +30,7 @@
 #' newton_raph(vec_J,par0=c(0,0))
 #'
 #' @export
-newton_raph <- function(vec_J,par0,...,LSearch = FALSE, w=rep.int(1,length(par0)),Max.it=2000,prec=1e-5){
+newton_raph <- function(vec_J,par0,...,LSearch = FALSE, w=rep.int(1,length(par0)),Max.it=2000,prec=1e-5, step.scale = 1){
   # For more on Linesearch:
   # https://en.wikipedia.org/wiki/Backtracking_line_search
   # http://cosmos.phy.tufts.edu/~danilo/AST16/Material/RootFinding.pdf page479
@@ -40,7 +41,7 @@ newton_raph <- function(vec_J,par0,...,LSearch = FALSE, w=rep.int(1,length(par0)
     
     while(i<Max.it & !converged){
       step = vec_J(par,...)
-      par = par - step$step
+      par = par - step.scale*step$step
       if(max(abs(step$step))<=prec){converged = TRUE}
       i = i+1
     }
@@ -72,6 +73,9 @@ newton_raph <- function(vec_J,par0,...,LSearch = FALSE, w=rep.int(1,length(par0)
     }
   }
   if (!converged){
-    warning(gettextf("Newton Raphson step did not converge to desired tolerance level"),domain = NA) }
+    if(LSearch){
+      method = 'Line Search'
+    }else{method = 'Standard Newton Raphson'}
+    warning(gettextf("Newton Raphson step did not converge to desired tolerance level using: %s",method),domain = NA) }
   return(list(par=par,val = vec_J(par,...) ))
 }
