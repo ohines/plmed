@@ -91,11 +91,11 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     Z.hdotdot2 = tZ%*%{Z*hdot2*{1-2*p2}*y.res2}
     tZX = tZ%*%X
 
-    dV1dtheta = -cbind(tZ%*%{X*hdot1},0,0        ,Z.hdotdot1,pp0,Z.hdot1,pp0,pp0,pp0)/N
+    dV1dtheta = -cbind(tZ%*%{X*hdot1},0,0        ,-Z.hdotdot1,pp0,Z.hdot1,pp0,pp0,pp0)/N
     dV2dtheta = -cbind(0,0,0                     ,Z.hdot1,pp0,pp0,pp0,pp0,pp0)/N
     dV3dtheta = -cbind(0,tZ%*%M,tZX              ,pp0,pp0,pp0,pp0,Z.sq,pp0)/N
     dV4dtheta = -cbind(tZX,0,0                   ,pp0,pp0,pp0,Z.sq,pp0,pp0)/N
-    dV5dtheta = -cbind(0,tZ%*%{M*hdot2},tZ%*%{X*hdot2},pp0,Z.hdotdot2,pp0,pp0,pp0,Z.hdot2)/N
+    dV5dtheta = -cbind(0,tZ%*%{M*hdot2},tZ%*%{X*hdot2},pp0,-Z.hdotdot2,pp0,pp0,pp0,Z.hdot2)/N
     dV6dtheta = -cbind(0,0,0                     ,pp0,Z.hdot2,pp0,pp0,pp0,pp0)/N
     
     sig11 = sum(x.res1^2*m.res1^2)/N
