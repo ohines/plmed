@@ -42,7 +42,7 @@ beta <- c(1,0,1) #Some true parameter values
 #Generate data on Confounders (Z), Exposure (X)
 #Mediator (M), Outcome (Y)
 Z <- rnorm(N)
-X <- rbinom(N,1,1/(exp(-Z)+1))
+X <- rbinom(N,1,plogis(Z))
 M <- beta[1]*X + Z +rnorm(N)
 Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 

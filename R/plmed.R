@@ -29,7 +29,7 @@
 #' #Generate data on Confounders (Z), Exposure (X)
 #' #Mediator (M), Outcome (Y)
 #' Z <- rnorm(N)
-#' X <- rbinom(N,1,1/(exp(-Z)+1))
+#' X <- rbinom(N,1,plogis(Z))
 #' M <- beta[1]*X + Z +rnorm(N)
 #' Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 #'
@@ -73,59 +73,65 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   Y = as.numeric(df[,4])
   Z = cbind(1,scale(df[,-(1:4)]))
 
+  a <- fit.plmed(Y,M,X,Z) 
+  a$call <- mf
+  class(a) <- "plmed"
+  a
+}
+
+#' @export
+fit.plmed <- function(Y,M,X,Z){
   #Get initial parameter estimates for Newton Raphson using MLE
   X.lm <- glm.fit(Z,X,family=binomial())$coefficients
   M.lm <- lm.fit(cbind(X,Z),M)$coefficients
   Y.lm <- lm.fit(cbind(M,X,Z),Y)$coefficients
-
-
-
+  
   beta  <- c(M.lm[1],Y.lm[1:2]) #target parameters
   gam.x <- X.lm #nuisance parameters
   gam.m <- M.lm[-1]
   gam.y <- Y.lm[-(1:2)]
   theta <- c(beta,gam.x,gam.x,gam.m,gam.m,gam.y,gam.y)
-
+  
   #Do unconstrained fit
-  a <- structure(list(),class="plmed")
-  a$call <- mf
-
   fit.unconstr <-   newton_raph(CUE_vec_J_bin,theta,X=X,M=M,Y=Y,Z=Z,method='G')
   theta.unc = fit.unconstr$par
-
+  
+  a <- list()
   a$coef <- c(fit.unconstr$par[1:3],fit.unconstr$par[1]*fit.unconstr$par[2])
   a$std.err      <- sqrt(c(fit.unconstr$val$var,fit.unconstr$par[1]^2*fit.unconstr$val$var[2] +
                              fit.unconstr$par[2]^2*fit.unconstr$val$var[1])  )
   a$Wald         <- c(fit.unconstr$val$T_stats,fit.unconstr$val$RSTest)
   names(a$Wald) <- c('beta1','beta2','NDE','NIDE')
-
+  
   w = c(rep.int(1,length(theta.unc)),length(theta)) #upweight solving the lagrange multiplier = faster
-
-
+  
   fit.H0.cue <- tryCatch({
-                  newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=0,
-                              LSearch = FALSE, w=w,Max.it=50)
-                              },error = function(e){
-                tryCatch({
-                  newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=0,
-                              LSearch = TRUE, w=w)
-                              },error = function(e){
-                stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
-
+    newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=0,
+                LSearch = FALSE, w=w,Max.it=50)
+  },error = function(e){
+    tryCatch({
+      newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=0,
+                  LSearch = TRUE, w=w)
+    },error = function(e){
+      stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
+  
   fit.H1.cue <- tryCatch({
-                  newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=1,
-                              LSearch = FALSE, w=w,Max.it=50)
-                              },error = function(e){
-                tryCatch({
-                  newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=1,
-                              LSearch = TRUE, w=w)
-                              },error = function(e){
-                stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
-
-
+    newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=1,
+                LSearch = FALSE, w=w,Max.it=50)
+  },error = function(e){
+    tryCatch({
+      newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',med_prop=1,
+                  LSearch = TRUE, w=w)
+    },error = function(e){
+      stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
+  
   a$Score.cue = c(fit.H1.cue$val$score,fit.H0.cue$val$score)
+
   a
+  
 }
+
+
 
 #' @export
 print.plmed <- function(object){
@@ -151,3 +157,4 @@ print.plmed <- function(object){
       format.pval(pchisq(a$Score.cue[2],df=1,lower.tail = F),
                   digits = 6))
 }
+

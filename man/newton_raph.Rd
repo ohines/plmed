@@ -11,7 +11,8 @@ newton_raph(
   LSearch = FALSE,
   w = rep.int(1, length(par0)),
   Max.it = 2000,
-  prec = 1e-05
+  prec = 1e-05,
+  step.scale = 1
 )
 }
 \arguments{
@@ -29,6 +30,8 @@ newton_raph(
 
 \item{prec}{Parameter precision tolerance. Iteration will stop when the step is
 smaller than the precision for all parameters.}
+
+\item{step.scale}{Optional scaling step to perform damped Newton Raphson.}
 }
 \value{
 A list containing the \code{par} estimates and
