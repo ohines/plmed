@@ -137,11 +137,19 @@ fit.TTS <- function(Y,M,X,Z,Mfam){
   X_PS = X/PS #comes up a lot - calculate once for speed
   cX_PS = (1-X)/(1-PS)
   
-  K    <-   ifelse(binM, m0/m1    , exp((beta[1]/2 -M.res0)*beta[1]/M.var)  )  #f(M_i|X=0,Z_i)/f(M_i|X=1,Z_i)
-  D_m0 <-   ifelse(binM, m0*(1-m0) ,1)                      #derivative of m0  wrt. f(z)
-  D_m1 <-   ifelse(binM, m1*(1-m1) ,1)                      #derivative of m1  wrt. f(z) (and also beta1)
-  D_K  <- K*ifelse(binM, m1-m0    ,beta[1]/M.var)          #derivative of K   wrt. f(z)
-  D_Kb1<- K*ifelse(binM, m1-1     ,(beta[1]-M.res0)/M.var) #derivative of K   wrt. beta1
+  if(binM){
+    K    <- m0/m1       #f(M_i|X=0,Z_i)/f(M_i|X=1,Z_i)
+    D_m0 <- m0*(1-m0)   #derivative of m0  wrt. f(z)
+    D_m1 <- m1*(1-m1)   #derivative of m1  wrt. f(z) (and also beta1)
+    D_K  <- K*( m1-m0 ) #derivative of K   wrt. f(z)
+    D_Kb1<- K*(m1-1)    #derivative of K   wrt. beta1
+  } else{
+    K    <-   exp((beta[1]/2 -M.res0)*beta[1]/M.var)  #f(M_i|X=0,Z_i)/f(M_i|X=1,Z_i)
+    D_m0 <-   1                                       #derivative of m0  wrt. f(z)
+    D_m1 <-   1                                       #derivative of m1  wrt. f(z) (and also beta1)
+    D_K  <- K*beta[1]/M.var                           #derivative of K   wrt. f(z)
+    D_Kb1<- K*(beta[1]-M.res0)/M.var                  #derivative of K   wrt. beta1
+  }
   
   Po0 = cX_PS*(Y- eta_00 ) + eta_00
   Po1 = X_PS*(Y- eta_11) + eta_11
