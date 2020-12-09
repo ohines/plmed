@@ -4,7 +4,17 @@
 \alias{CUE_vec_J_bin}
 \title{Newton Raphson Steps for plmed fitting}
 \usage{
-CUE_vec_J_bin(par, X, M, Y, Z, method = "G", med_prop = NULL, Sig = NULL)
+CUE_vec_J_bin(
+  par,
+  X,
+  M,
+  Y,
+  Z,
+  method = "G",
+  weights = rep(1, N),
+  med_prop = NULL,
+  Sig = NULL
+)
 }
 \arguments{
 \item{par}{vector containing beta and augmented nuisance parameters, optionally with a

@@ -16,9 +16,9 @@
 #' @return A list containing the newton-raphson step for use with \code{\link[plmed]{newton_raph}}
 #' as well as variance and score estimates.
 #' @export
-CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
+CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',weights=rep(1,N),med_prop=NULL,Sig=NULL){
   theta=par
-  N = length(M)
+  N = NROW(M)
   nt=1 #Assume X is binomial with nt trials
   
   cue   <- method=='CUE'
@@ -53,23 +53,29 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
   hdot1     = nt*p1*(1-p1)
   hdot2     = nt*p2*(1-p2)
 
-  #### Estimating Equations and first derivatives ####
+  Unit_wts <- sum(weights==1)==N
+  #wt       <- ifelse(Unit_wts,1,weights) #faster than multiplying lots of unncesessary vectors
+  #N.wt     <- ifelse(Unit_wts,N,sum(wt))
+  wt = weights
+  N.wt = sum(wt)
 
-  U = c(sum(x.res1*m.res1),sum(m.res2*y.res1),sum(x.res2*y.res2))/N
+  #### Estimating Equations and first derivatives ####
+  
+  U = c(sum(x.res1*m.res1*wt),sum(m.res2*y.res1*wt),sum(x.res2*y.res2*wt))/N.wt
 
   
-  dUdbeta = -matrix(c(sum(X*x.res1),0,0,                         #dU1dbeta
-                      sum(X*y.res1),sum(M*m.res2),sum(X*m.res2), #dU2dbeta
-                      0,sum(M*x.res2),sum(X*x.res2)),            #dU3dbeta
-                    nrow=3,byrow = TRUE)/N
+  dUdbeta = -matrix(c(sum(X*x.res1*wt),0,0,                         #dU1dbeta
+                      sum(X*y.res1*wt),sum(M*m.res2*wt),sum(X*m.res2*wt), #dU2dbeta
+                      0,sum(M*x.res2*wt),sum(X*x.res2*wt)),            #dU3dbeta
+                    nrow=3,byrow = TRUE)/N.wt
 
   if(cue|G){
-    V1 = tZ%*%{m.res1*hdot1}/N
-    V2 = tZ%*%x.res1/N
-    V3 = tZ%*%y.res1/N
-    V4 = tZ%*%m.res2/N
-    V5 = tZ%*%{y.res2*hdot2}/N
-    V6 = tZ%*%x.res2/N
+    V1 = tZ%*%{m.res1*hdot1*wt}/N.wt
+    V2 = tZ%*%{x.res1*wt}/N.wt
+    V3 = tZ%*%{y.res1*wt}/N.wt
+    V4 = tZ%*%{m.res2*wt}/N.wt
+    V5 = tZ%*%{y.res2*hdot2*wt}/N.wt
+    V6 = tZ%*%{x.res2*wt}/N.wt
 
     V = c(V1,V2,V3,V4,V5,V6)
 
@@ -83,28 +89,30 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     
     pp0 = matrix(0,nrow=p,ncol=p)
     
-    Z.sq =    tZ%*%Z
-    Z.hdot1 = tZ%*%{Z*hdot1} 
-    Z.hdot2 = tZ%*%{Z*hdot2}
+    Z.sq =    tZ%*%{Z*wt}
+    Z.hdot1 = tZ%*%{Z*hdot1*wt} 
+    Z.hdot2 = tZ%*%{Z*hdot2*wt}
 
-    Z.hdotdot1 = tZ%*%{Z*hdot1*{1-2*p1}*m.res1}
-    Z.hdotdot2 = tZ%*%{Z*hdot2*{1-2*p2}*y.res2}
-    tZX = tZ%*%X
+    Z.hdotdot1 = tZ%*%{Z*hdot1*{1-2*p1}*m.res1*wt}
+    Z.hdotdot2 = tZ%*%{Z*hdot2*{1-2*p2}*y.res2*wt}
+    tZX = tZ%*%{X*wt}
 
-    dV1dtheta = -cbind(tZ%*%{X*hdot1},0,0        ,-Z.hdotdot1,pp0,Z.hdot1,pp0,pp0,pp0)/N
-    dV2dtheta = -cbind(0,0,0                     ,Z.hdot1,pp0,pp0,pp0,pp0,pp0)/N
-    dV3dtheta = -cbind(0,tZ%*%M,tZX              ,pp0,pp0,pp0,pp0,Z.sq,pp0)/N
-    dV4dtheta = -cbind(tZX,0,0                   ,pp0,pp0,pp0,Z.sq,pp0,pp0)/N
-    dV5dtheta = -cbind(0,tZ%*%{M*hdot2},tZ%*%{X*hdot2},pp0,-Z.hdotdot2,pp0,pp0,pp0,Z.hdot2)/N
-    dV6dtheta = -cbind(0,0,0                     ,pp0,Z.hdot2,pp0,pp0,pp0,pp0)/N
+    dV1dtheta = -cbind(tZ%*%{X*hdot1*wt},0,0        ,-Z.hdotdot1,pp0,Z.hdot1,pp0,pp0,pp0)/N.wt
+    dV2dtheta = -cbind(0,0,0                     ,Z.hdot1,pp0,pp0,pp0,pp0,pp0)/N.wt
+    dV3dtheta = -cbind(0,tZ%*%{M*wt},tZX              ,pp0,pp0,pp0,pp0,Z.sq,pp0)/N.wt
+    dV4dtheta = -cbind(tZX,0,0                   ,pp0,pp0,pp0,Z.sq,pp0,pp0)/N.wt
+    dV5dtheta = -cbind(0,tZ%*%{M*hdot2*wt},tZ%*%{X*hdot2*wt},pp0,-Z.hdotdot2,pp0,pp0,pp0,Z.hdot2)/N.wt
+    dV6dtheta = -cbind(0,0,0                     ,pp0,Z.hdot2,pp0,pp0,pp0,pp0)/N.wt
+    #How to include wt in sig?
+    w2 = wt^2*N/N.wt
     
-    sig11 = sum(x.res1^2*m.res1^2)/N
-    sig22 = sum(m.res2^2*y.res1^2)/N
-    sig33 = sum(x.res2^2*y.res2^2)/N
+    sig11 = sum(x.res1^2*m.res1^2*w2)/N.wt
+    sig22 = sum(m.res2^2*y.res1^2*w2)/N.wt
+    sig33 = sum(x.res2^2*y.res2^2*w2)/N.wt
 
-    sig12 = sum(x.res1*m.res1*m.res2*y.res1)/N
-    sig13 = sum(x.res1*m.res1*x.res2*y.res2)/N
-    sig23 = sum(m.res2*y.res1*x.res2*y.res2)/N
+    sig12 = sum(x.res1*m.res1*m.res2*y.res1*w2)/N.wt
+    sig13 = sum(x.res1*m.res1*x.res2*y.res2*w2)/N.wt
+    sig23 = sum(m.res2*y.res1*x.res2*y.res2*w2)/N.wt
 
     Sig = matrix(c(sig11,sig12,sig13,
                    sig12,sig22,sig23,
@@ -120,58 +128,58 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
 
   if(cue){
     ###calculation of dfdbeta ####
-    dsig11dtheta = -2*c(sum(X*x.res1^2*m.res1),#dsig11dbeta1
+    dsig11dtheta = -2*c(sum(X*x.res1^2*m.res1*w2),#dsig11dbeta1
                         0,0,
-                        tZ%*%{m.res1^2*hdot1*x.res1}, #dsig11dgamx1
+                        tZ%*%{m.res1^2*hdot1*x.res1*w2}, #dsig11dgamx1
                         p0,
-                        tZ%*%{x.res1^2*m.res1}, #dsig11dgamm1
-                        p0,p0,p0)/N
+                        tZ%*%{x.res1^2*m.res1*w2}, #dsig11dgamm1
+                        p0,p0,p0)/N.wt
     
-    dsig22dtheta = -2*c(sum(X*y.res1^2*m.res2),#dsig22dbeta1
-                        sum(M*m.res2^2*y.res1),#dsig22dbeta2
-                        sum(X*m.res2^2*y.res1),#dsig22dbeta3
+    dsig22dtheta = -2*c(sum(X*y.res1^2*m.res2*w2),#dsig22dbeta1
+                        sum(M*m.res2^2*y.res1*w2),#dsig22dbeta2
+                        sum(X*m.res2^2*y.res1*w2),#dsig22dbeta3
                         p0,p0,p0,
-                        tZ%*%{y.res1^2*m.res2},#dsig22dgamm2
-                        tZ%*%{m.res2^2*y.res1},#dsig22dgamy1
-                        p0)/N
+                        tZ%*%{y.res1^2*m.res2*w2},#dsig22dgamm2
+                        tZ%*%{m.res2^2*y.res1*w2},#dsig22dgamy1
+                        p0)/N.wt
     
     dsig33dtheta = -2*c(0,
-                     sum(M*x.res2^2*y.res2),#dsig33dbeta2
-                     sum(X*x.res2^2*y.res2),#dsig33dbeta3
+                     sum(M*x.res2^2*y.res2*w2),#dsig33dbeta2
+                     sum(X*x.res2^2*y.res2*w2),#dsig33dbeta3
                      p0,
-                     tZ%*%{y.res2^2*x.res2*hdot2},#dsig33dgamx2
+                     tZ%*%{y.res2^2*x.res2*hdot2*w2},#dsig33dgamx2
                      p0,p0,p0,
-                     tZ%*%{x.res2^2*y.res2})/N   #dsig33dgamy2
+                     tZ%*%{x.res2^2*y.res2*w2})/N.wt   #dsig33dgamy2
     
-    dsig12dtheta = c(sum(-X*x.res1*y.res1*{m.res1+m.res2}),#dsig12dbeta1
-                     sum(-M*x.res1*m.res1*m.res2), #dsig12dbeta2
-                     sum(-X*x.res1*m.res1*m.res2), #dsig12dbeta3
-                     -tZ%*%{hdot1*m.res1*m.res2*y.res1}, #dsig12dgamx1
+    dsig12dtheta = c(sum(-X*x.res1*y.res1*{m.res1+m.res2}*w2),#dsig12dbeta1
+                     sum(-M*x.res1*m.res1*m.res2*w2), #dsig12dbeta2
+                     sum(-X*x.res1*m.res1*m.res2*w2), #dsig12dbeta3
+                     -tZ%*%{hdot1*m.res1*m.res2*y.res1*w2}, #dsig12dgamx1
                      p0,
-                     -tZ%*%{x.res1*m.res2*y.res1}, #dsig12dgamm1
-                     -tZ%*%{x.res1*m.res1*y.res1}, #dsig12dgamm2
-                     -tZ%*%{x.res1*m.res1*m.res2}, #dsig12dgamy1
-                     p0)/N
+                     -tZ%*%{x.res1*m.res2*y.res1*w2}, #dsig12dgamm1
+                     -tZ%*%{x.res1*m.res1*y.res1*w2}, #dsig12dgamm2
+                     -tZ%*%{x.res1*m.res1*m.res2*w2}, #dsig12dgamy1
+                     p0)/N.wt
     
-    dsig13dtheta = c(sum(-X*x.res1*x.res2*y.res2),#dsig13dbeta1
-                     sum(-M*x.res1*x.res2*m.res1),#dsig13dbeta2
-                     sum(-X*x.res1*x.res2*m.res1),#dsig13dbeta3
-                     -tZ%*%{hdot1*m.res1*y.res2*x.res2},#dsig13dgamx1
-                     -tZ%*%{hdot2*m.res1*y.res2*x.res1},#dsig13dgamx2
-                     -tZ%*%{x.res1*y.res2*x.res2},#dsig13dgamm1
+    dsig13dtheta = c(sum(-X*x.res1*x.res2*y.res2*w2),#dsig13dbeta1
+                     sum(-M*x.res1*x.res2*m.res1*w2),#dsig13dbeta2
+                     sum(-X*x.res1*x.res2*m.res1*w2),#dsig13dbeta3
+                     -tZ%*%{hdot1*m.res1*y.res2*x.res2*w2},#dsig13dgamx1
+                     -tZ%*%{hdot2*m.res1*y.res2*x.res1*w2},#dsig13dgamx2
+                     -tZ%*%{x.res1*y.res2*x.res2*w2},#dsig13dgamm1
                       p0,
                       p0,
-                     -tZ%*%{m.res1*x.res2*x.res1})/N #dsig13dgamy2
+                     -tZ%*%{m.res1*x.res2*x.res1*w2})/N.wt #dsig13dgamy2
     
-    dsig23dtheta = c(sum(-X*x.res2*y.res1*y.res2),#dsig23dbeta1
-                     sum(-M*x.res2*m.res2*{y.res1+y.res2}),#dsig23dbeta2
-                     sum(-X*x.res2*m.res2*{y.res1+y.res2}),#dsig23dbeta2
+    dsig23dtheta = c(sum(-X*x.res2*y.res1*y.res2*w2),#dsig23dbeta1
+                     sum(-M*x.res2*m.res2*{y.res1+y.res2}*w2),#dsig23dbeta2
+                     sum(-X*x.res2*m.res2*{y.res1+y.res2}*w2),#dsig23dbeta2
                      p0,
-                     -tZ%*%{hdot2*y.res1*m.res2*y.res2}, #dsig23dgamx2
+                     -tZ%*%{hdot2*y.res1*m.res2*y.res2*w2}, #dsig23dgamx2
                      p0,
-                     -tZ%*%{x.res2*y.res1*y.res2}, #dsig23dgamm2
-                     -tZ%*%{m.res2*x.res2*y.res2}, #dsig23dgamy1
-                     -tZ%*%{m.res2*x.res2*y.res1} )/N #dsig23dgamy2
+                     -tZ%*%{x.res2*y.res1*y.res2*w2}, #dsig23dgamm2
+                     -tZ%*%{m.res2*x.res2*y.res2*w2}, #dsig23dgamy1
+                     -tZ%*%{m.res2*x.res2*y.res1*w2} )/N.wt #dsig23dgamy2
     
     B = dUdtheta - rbind(AU[1]*dsig11dtheta + AU[2]*dsig12dtheta + AU[3]*dsig13dtheta,
                          AU[1]*dsig12dtheta + AU[2]*dsig22dtheta + AU[3]*dsig23dtheta,
@@ -180,116 +188,117 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',med_prop=NULL,Sig=NULL){
     dfdbeta = N*crossprod(AU,dUdbeta + B[,1:3])
     
     ####calculation of d2fdbetadgamma ####
-    MX = sum(M*X) 
-    XX = sum(X*X)
+    MX = sum(M*X*wt) 
+    XX = sum(X*X*wt)
+    tZX = tZ%*%{X*wt}
     
     p000 = rep.int(0,3+6*p)
 
-    dU1dbetadtheta = matrix(c(0,0,0,tZ%*%{hdot1*X},p0,p0,p0,p0,p0,
+    dU1dbetadtheta = matrix(c(0,0,0,tZ%*%{hdot1*X*wt},p0,p0,p0,p0,p0,
                               p000,
-                              p000),byrow=T,nrow=3)/N
+                              p000),byrow=T,nrow=3)/N.wt
 
-    dU2dbetadtheta = matrix(c(0,MX,XX,p0,p0,p0,p0 ,tZ%*%X ,p0,
-                              MX,0,0 ,p0,p0,p0,tZ%*%M     ,p0,p0,
-                              XX,0,0 ,p0,p0,p0,tZ%*%X     ,p0,p0),byrow=T,nrow=3)/N
+    dU2dbetadtheta = matrix(c(0,MX,XX,p0,p0,p0,p0 ,tZX ,p0,
+                              MX,0,0 ,p0,p0,p0,tZ%*%{M*wt}     ,p0,p0,
+                              XX,0,0 ,p0,p0,p0,tZX     ,p0,p0),byrow=T,nrow=3)/N.wt
 
     dU3dbetadtheta = matrix(c( p000,
-                               0,0,0,p0,tZ%*%{hdot2*M} ,p0,p0,p0,p0,
-                               0,0,0,p0,tZ%*%{hdot2*X} ,p0,p0,p0,p0),byrow=T,nrow=3)/N
+                               0,0,0,p0,tZ%*%{hdot2*M*wt} ,p0,p0,p0,p0,
+                               0,0,0,p0,tZ%*%{hdot2*X*wt} ,p0,p0,p0,p0),byrow=T,nrow=3)/N.wt
 
     
-    dsig11db1db1 = 2*sum(X^2* x.res1^2)
-    dsig22db1db1 = 2*sum(X^2* y.res1^2)
-    dsig22db1db2 = 4*sum(X*M* y.res1*m.res2)
-    dsig22db1db3 = 4*sum(X^2* y.res1*m.res2)
-    dsig22db2db2 = 2*sum(M^2* m.res2^2)
-    dsig22db2db3 = 2*sum(X*M* m.res2^2)
-    dsig22db3db3 = 2*sum(X^2* m.res2^2)
-    dsig33db2db2 = 2*sum(M^2* x.res2^2)
-    dsig33db2db3 = 2*sum(X*M* x.res2^2)
-    dsig33db3db3 = 2*sum(X^2* x.res2^2)
+    dsig11db1db1 = 2*sum(X^2* x.res1^2*w2)
+    dsig22db1db1 = 2*sum(X^2* y.res1^2*w2)
+    dsig22db1db2 = 4*sum(X*M* y.res1*m.res2*w2)
+    dsig22db1db3 = 4*sum(X^2* y.res1*m.res2*w2)
+    dsig22db2db2 = 2*sum(M^2* m.res2^2*w2)
+    dsig22db2db3 = 2*sum(X*M* m.res2^2*w2)
+    dsig22db3db3 = 2*sum(X^2* m.res2^2*w2)
+    dsig33db2db2 = 2*sum(M^2* x.res2^2*w2)
+    dsig33db2db3 = 2*sum(X*M* x.res2^2*w2)
+    dsig33db3db3 = 2*sum(X^2* x.res2^2*w2)
 
-    dsig11db1dgamx1 = 4*tZ%*%{hdot1*X*x.res1*m.res1}
-    dsig11db1dgamm1 = 2*tZ%*%{X*x.res1^2}
-    dsig22db1dgamm2 = 2*tZ%*%{X*y.res1^2}
-    dsig22db2dgamm2 = 4*tZ%*%{M*y.res1*m.res2}
-    dsig22db3dgamm2 = 4*tZ%*%{X*y.res1*m.res2}
-    dsig22db1dgamy1 = 4*tZ%*%{X*y.res1*m.res2}
-    dsig22db2dgamy1 = 2*tZ%*%{M*m.res2^2}
-    dsig22db3dgamy1 = 2*tZ%*%{X*m.res2^2}
-    dsig33db2dgamx2 = 4*tZ%*%{M*y.res2*x.res2*hdot2}
-    dsig33db3dgamx2 = 4*tZ%*%{X*y.res2*x.res2*hdot2}
-    dsig33db2dgamy2 = 2*tZ%*%{M*x.res2^2}
-    dsig33db3dgamy2 = 2*tZ%*%{X*x.res2^2}
+    dsig11db1dgamx1 = 4*tZ%*%{hdot1*X*x.res1*m.res1*w2}
+    dsig11db1dgamm1 = 2*tZ%*%{X*x.res1^2*w2}
+    dsig22db1dgamm2 = 2*tZ%*%{X*y.res1^2*w2}
+    dsig22db2dgamm2 = 4*tZ%*%{M*y.res1*m.res2*w2}
+    dsig22db3dgamm2 = 4*tZ%*%{X*y.res1*m.res2*w2}
+    dsig22db1dgamy1 = 4*tZ%*%{X*y.res1*m.res2*w2}
+    dsig22db2dgamy1 = 2*tZ%*%{M*m.res2^2*w2}
+    dsig22db3dgamy1 = 2*tZ%*%{X*m.res2^2*w2}
+    dsig33db2dgamx2 = 4*tZ%*%{M*y.res2*x.res2*hdot2*w2}
+    dsig33db3dgamx2 = 4*tZ%*%{X*y.res2*x.res2*hdot2*w2}
+    dsig33db2dgamy2 = 2*tZ%*%{M*x.res2^2*w2}
+    dsig33db3dgamy2 = 2*tZ%*%{X*x.res2^2*w2}
 
     dsig11dbetadtheta = matrix(c( dsig11db1db1,0,0,dsig11db1dgamx1, p0,dsig11db1dgamm1,p0,p0,p0,
-                                  p000,p000),byrow=T,nrow=3)/N
+                                  p000,p000),byrow=T,nrow=3)/N.wt
 
     dsig22dbetadtheta = matrix(c(dsig22db1db1,dsig22db1db2,dsig22db1db3,p0,p0,p0,dsig22db1dgamm2,dsig22db1dgamy1,p0,
                                  dsig22db1db2,dsig22db2db2,dsig22db2db3,p0,p0,p0,dsig22db2dgamm2,dsig22db2dgamy1,p0,
-                                 dsig22db1db3,dsig22db2db3,dsig22db3db3,p0,p0,p0,dsig22db3dgamm2,dsig22db3dgamy1,p0),byrow=T,nrow=3)/N
+                                 dsig22db1db3,dsig22db2db3,dsig22db3db3,p0,p0,p0,dsig22db3dgamm2,dsig22db3dgamy1,p0),byrow=T,nrow=3)/N.wt
 
     dsig33dbetadtheta = matrix(c(p000,
                                  0,dsig33db2db2,dsig33db2db3,p0,dsig33db2dgamx2,p0,p0,p0,dsig33db2dgamy2,
-                                 0,dsig33db2db3,dsig33db3db3,p0,dsig33db3dgamx2,p0,p0,p0,dsig33db3dgamy2),byrow=T,nrow=3)/N
+                                 0,dsig33db2db3,dsig33db3db3,p0,dsig33db3dgamx2,p0,p0,p0,dsig33db3dgamy2),byrow=T,nrow=3)/N.wt
 
-    dsig12db1db1 = 2*sum(X^2*   x.res1*y.res1)
-    dsig12db1db2 =   sum(X*M*   x.res1*{m.res1+m.res2})
-    dsig12db1db3 =   sum(X^2*   x.res1*{m.res1+m.res2})
-    dsig13db1db2 =   sum(X*M*   x.res1*x.res2)
-    dsig13db1db3 =   sum(X^2*   x.res1*x.res2)
-    dsig23db1db2 =   sum(X*M*   x.res2*{y.res1+y.res2})
-    dsig23db1db3 =   sum(X^2*   x.res2*{y.res1+y.res2})
-    dsig23db2db2 = 2*sum(M^2*   x.res2*m.res2)
-    dsig23db2db3 = 2*sum(X*M*   x.res2*m.res2)
-    dsig23db3db3 = 2*sum(X^2*   x.res2*m.res2)
+    dsig12db1db1 = 2*sum(X^2*   x.res1*y.res1*w2)
+    dsig12db1db2 =   sum(X*M*   x.res1*{m.res1+m.res2}*w2)
+    dsig12db1db3 =   sum(X^2*   x.res1*{m.res1+m.res2}*w2)
+    dsig13db1db2 =   sum(X*M*   x.res1*x.res2*w2)
+    dsig13db1db3 =   sum(X^2*   x.res1*x.res2*w2)
+    dsig23db1db2 =   sum(X*M*   x.res2*{y.res1+y.res2}*w2)
+    dsig23db1db3 =   sum(X^2*   x.res2*{y.res1+y.res2}*w2)
+    dsig23db2db2 = 2*sum(M^2*   x.res2*m.res2*w2)
+    dsig23db2db3 = 2*sum(X*M*   x.res2*m.res2*w2)
+    dsig23db3db3 = 2*sum(X^2*   x.res2*m.res2*w2)
 
-    dsig12db1dgamx1 = tZ%*%{hdot1*X*y.res1*{m.res1+m.res2}}
-    dsig12db1dgamy1 = tZ%*%{X*x.res1*{m.res1+m.res2}}
-    dsig12db1dgamm1 = tZ%*%{X*x.res1*y.res1}
+    dsig12db1dgamx1 = tZ%*%{hdot1*X*y.res1*{m.res1+m.res2}*w2}
+    dsig12db1dgamy1 = tZ%*%{X*x.res1*{m.res1+m.res2}*w2}
+    dsig12db1dgamm1 = tZ%*%{X*x.res1*y.res1*w2}
     dsig12db1dgamm2 = dsig12db1dgamm1
-    dsig12db2dgamx1 = tZ%*%{hdot1*M*m.res1*m.res2}
-    dsig12db2dgamm1 = tZ%*%{M*x.res1*m.res2}
-    dsig12db2dgamm2 = tZ%*%{M*x.res1*m.res1}
-    dsig12db3dgamx1 = tZ%*%{hdot1*X*m.res1*m.res2}
-    dsig12db3dgamm1 = tZ%*%{X*x.res1*m.res2}
-    dsig12db3dgamm2 = tZ%*%{X*x.res1*m.res1}
+    dsig12db2dgamx1 = tZ%*%{hdot1*M*m.res1*m.res2*w2}
+    dsig12db2dgamm1 = tZ%*%{M*x.res1*m.res2*w2}
+    dsig12db2dgamm2 = tZ%*%{M*x.res1*m.res1*w2}
+    dsig12db3dgamx1 = tZ%*%{hdot1*X*m.res1*m.res2*w2}
+    dsig12db3dgamm1 = tZ%*%{X*x.res1*m.res2*w2}
+    dsig12db3dgamm2 = tZ%*%{X*x.res1*m.res1*w2}
 
-    dsig13db1dgamx1 = tZ%*%{hdot1*X*y.res2*x.res2}
-    dsig13db1dgamx2 = tZ%*%{X*hdot2*y.res2*x.res1}
-    dsig13db1dgamy2 = tZ%*%{X*x.res1*x.res2}
-    dsig13db2dgamx1 = tZ%*%{hdot1*M*x.res2*m.res1}
-    dsig13db2dgamx2 = tZ%*%{M*hdot2*m.res1*x.res1}
-    dsig13db2dgamm1 = tZ%*%{M*x.res2*x.res1}
-    dsig13db3dgamx1 = tZ%*%{hdot1*X*x.res2*m.res1}
-    dsig13db3dgamx2 = tZ%*%{X*hdot2*m.res1*x.res1}
-    dsig13db3dgamm1 = tZ%*%{X*x.res2*x.res1}
+    dsig13db1dgamx1 = tZ%*%{hdot1*X*y.res2*x.res2*w2}
+    dsig13db1dgamx2 = tZ%*%{X*hdot2*y.res2*x.res1*w2}
+    dsig13db1dgamy2 = tZ%*%{X*x.res1*x.res2*w2}
+    dsig13db2dgamx1 = tZ%*%{hdot1*M*x.res2*m.res1*w2}
+    dsig13db2dgamx2 = tZ%*%{M*hdot2*m.res1*x.res1*w2}
+    dsig13db2dgamm1 = tZ%*%{M*x.res2*x.res1*w2}
+    dsig13db3dgamx1 = tZ%*%{hdot1*X*x.res2*m.res1*w2}
+    dsig13db3dgamx2 = tZ%*%{X*hdot2*m.res1*x.res1*w2}
+    dsig13db3dgamm1 = tZ%*%{X*x.res2*x.res1*w2}
 
-    dsig23db1dgamx2 = tZ%*%{X*hdot2*y.res1*y.res2}
-    dsig23db1dgamy1 = tZ%*%{X*x.res2*y.res2}
-    dsig23db1dgamy2 = tZ%*%{X*x.res2*y.res1}
-    dsig23db2dgamx2 = tZ%*%{M*hdot2*m.res2*{y.res1+y.res2}}
-    dsig23db2dgamm2 = tZ%*%{M*x.res2*{y.res1+y.res2}}
-    dsig23db2dgamy1 = tZ%*%{M*x.res2*m.res2}
+    dsig23db1dgamx2 = tZ%*%{X*hdot2*y.res1*y.res2*w2}
+    dsig23db1dgamy1 = tZ%*%{X*x.res2*y.res2*w2}
+    dsig23db1dgamy2 = tZ%*%{X*x.res2*y.res1*w2}
+    dsig23db2dgamx2 = tZ%*%{M*hdot2*m.res2*{y.res1+y.res2}*w2}
+    dsig23db2dgamm2 = tZ%*%{M*x.res2*{y.res1+y.res2}*w2}
+    dsig23db2dgamy1 = tZ%*%{M*x.res2*m.res2*w2}
     dsig23db2dgamy2 = dsig23db2dgamy1
-    dsig23db3dgamx2 = tZ%*%{X*hdot2*m.res2*{y.res1+y.res2}}
-    dsig23db3dgamm2 = tZ%*%{X*x.res2*{y.res1+y.res2}}
-    dsig23db3dgamy1 = tZ%*%{X*x.res2*m.res2}
+    dsig23db3dgamx2 = tZ%*%{X*hdot2*m.res2*{y.res1+y.res2}*w2}
+    dsig23db3dgamm2 = tZ%*%{X*x.res2*{y.res1+y.res2}*w2}
+    dsig23db3dgamy1 = tZ%*%{X*x.res2*m.res2*w2}
     dsig23db3dgamy2 = dsig23db3dgamy1
 
 
 
     dsig12dbetadtheta = matrix(c(dsig12db1db1,dsig12db1db2,dsig12db1db3,dsig12db1dgamx1,p0,dsig12db1dgamm1,dsig12db1dgamm2,dsig12db1dgamy1,p0,
                                  dsig12db1db2,0,0                      ,dsig12db2dgamx1,p0,dsig12db2dgamm1,dsig12db2dgamm2,p0,p0,
-                                 dsig12db1db3,0,0                      ,dsig12db3dgamx1,p0,dsig12db3dgamm1,dsig12db3dgamm2,p0,p0),byrow=T,nrow=3)/N
+                                 dsig12db1db3,0,0                      ,dsig12db3dgamx1,p0,dsig12db3dgamm1,dsig12db3dgamm2,p0,p0),byrow=T,nrow=3)/N.wt
 
     dsig13dbetadtheta = matrix(c(0,dsig13db1db2,dsig13db1db3,dsig13db1dgamx1 ,dsig13db1dgamx2,p0              ,p0,p0,dsig13db1dgamy2 ,
                                  dsig13db1db2,0,0           ,dsig13db2dgamx1 ,dsig13db2dgamx2,dsig13db2dgamm1 ,p0,p0,p0,
-                                 dsig13db1db3,0,0           ,dsig13db3dgamx1 ,dsig13db3dgamx2,dsig13db3dgamm1 ,p0,p0,p0),byrow=T,nrow=3)/N
+                                 dsig13db1db3,0,0           ,dsig13db3dgamx1 ,dsig13db3dgamx2,dsig13db3dgamm1 ,p0,p0,p0),byrow=T,nrow=3)/N.wt
 
     dsig23dbetadtheta = matrix(c(0           ,dsig23db1db2,dsig23db1db3,p0,dsig23db1dgamx2,p0,p0              ,dsig23db1dgamy1,dsig23db1dgamy2,
                                  dsig23db1db2,dsig23db2db2,dsig23db2db3,p0,dsig23db2dgamx2,p0,dsig23db2dgamm2 ,dsig23db2dgamy1,dsig23db2dgamy2,
-                                 dsig23db1db3,dsig23db2db3,dsig23db3db3,p0,dsig23db3dgamx2,p0,dsig23db3dgamm2 ,dsig23db3dgamy1,dsig23db3dgamy2),byrow=T,nrow=3)/N
+                                 dsig23db1db3,dsig23db2db3,dsig23db3db3,p0,dsig23db3dgamx2,p0,dsig23db3dgamm2 ,dsig23db3dgamy1,dsig23db3dgamy2),byrow=T,nrow=3)/N.wt
 
     d2fdbetadtheta = N*(
       2*crossprod(B[,1:3],A%*%B) +

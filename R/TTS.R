@@ -94,7 +94,7 @@ TTS <- function(exposure.formula,mediator.formula,outcome.formula,mediator.famil
 
   a <- fit.TTS(Y,M,X,Z,Mfam) 
   a$call <- mf
-  class(a) <- "TTS"
+  class(a) <- "plmed"
   a
 }
 
@@ -102,7 +102,6 @@ TTS <- function(exposure.formula,mediator.formula,outcome.formula,mediator.famil
 
 #' @export
 fit.TTS <- function(Y,M,X,Z,Mfam){
-
   m_linkinv <- Mfam()$linkinv
   m_dev.res <- Mfam()$dev.resids
   binM <- Mfam()$family == "binomial"
@@ -148,7 +147,7 @@ fit.TTS <- function(Y,M,X,Z,Mfam){
   Po1 = X_PS*(Y- eta_11) + eta_11
   Po1M0 = X_PS*K*(Y-y1) + cX_PS*(y1-eta_10) + eta_10
   
-  h = 1 #these methods were buitl to accomodate other weighting strategies (e.g. TTS 2014)
+  h = 1 #these methods were built to accomodate other weighting strategies (e.g. TTS 2014)
   h.mean <- function(a) mean(h*a)
   '%h%' <- function(a,b) (a*h)%*%b
   
@@ -233,22 +232,6 @@ fit.TTS <- function(Y,M,X,Z,Mfam){
 }
 
 
-#' @export
-print.TTS <- function(object){
-  a <- object
-  
-  cat("\nCall:\n", paste(deparse(a$call), sep = "\n", collapse = "\n"), "\n\n", sep = "")
-  
-  cat("Coefficients:\n")
-  
-  df <- data.frame(Estimate = a$coef, Std.Error = a$std.err ,
-                   Wald.value = a$Wald,
-                   Wald.pval = pchisq(a$Wald,df=1,lower.tail = F) )
-  
-  printCoefmat(df, digits = 6, signif.stars = T,na.print = "NA",
-               tst.ind = 3,P.values=T,has.Pvalue=T)
-  
-}
 
 
 

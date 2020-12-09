@@ -4,7 +4,7 @@
 \alias{plmed}
 \title{Partially Linear Mediation using G-estimation}
 \usage{
-plmed(exposure.formula, mediator.formula, outcome.formula, data)
+plmed(exposure.formula, mediator.formula, outcome.formula, data, weights)
 }
 \arguments{
 \item{exposure.formula}{an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
@@ -21,6 +21,9 @@ that class) where the left hand side of the formula contains the continuous outc
 containing the variables in the model. If not found in data, the
 variables are taken from environment(formula), typically the environment from
 which \code{plmed} is called.}
+
+\item{weights}{an optional vector of ‘prior weights’ to be used in 
+the fitting process. Should be \code{NULL} or a numeric vector.}
 }
 \value{
 An object of class \code{plmed} with unconstrained parameter estimates,
