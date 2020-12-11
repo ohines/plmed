@@ -14,7 +14,8 @@
 #' that class) where the left hand side of the formula contains the continuous mediator variable of interest.
 #' @param outcome.formula an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 #' that class) where the left hand side of the formula contains the continuous outcome variable of interest.
-#' @param exposure.family link function for the exposure model, can be either \code{"gaussian"} or \code{"binomial"}
+#' @param exposure.family link function for the exposure model, can be can be a character string naming a family function,
+#' a family function or the result of a call to a family function. (See \link[stats]{family} for details of family functions.)
 #' Must be \code{"binomial"} when using \code{Method="TTS"}
 #' @param mediator.family link function for the mediator model, can be either \code{"gaussian"} or \code{"binomial"}. 
 #' Must be \code{"gaussian"} when using \code{Method="G-estimation"}
@@ -92,24 +93,31 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   allowed_families <- as.environment(list(gaussian = stats::gaussian,binomial = stats::binomial))
   ## exposure family
   if (method=="G-estimation"){
-    if(is.character(exposure.family)) {
-      Xfam <- tryCatch({
-        get(exposure.family,mode = "function",
-            envir = allowed_families)
-      },error=function(e){
-        e$message = gettextf("'exposure.family' must be either 'gaussian' or 'binomial' not: %s",mediator.family)
-        stop(e)
-      })
-    }else{
-      stop("'exposure.family' must be either 'gaussian' or 'binomial'")
+    if(is.character(exposure.family))
+      Xfam <- get(exposure.family, mode = "function", envir = parent.frame())
+    if(is.function(exposure.family)) Xfam <- exposure.family()
+    if(is.null(Xfam()$family)) {
+      #print(exposure.family)
+      stop("'exposure.family' not recognized")
     }
+    
+    #if(is.character(exposure.family)) {
+    #  Xfam <- tryCatch({
+    #    get(exposure.family,mode = "function",
+    #        envir = allowed_families)
+    #  },error=function(e){
+    #    e$message = gettextf("'exposure.family' must be either 'gaussian' or 'binomial' not: %s",mediator.family)
+    #    stop(e)
+    #  })
+    #}else{
+    #  stop("'exposure.family' must be either 'gaussian' or 'binomial'")
+    #}
     if(mediator.family != "gaussian"){
       warning("G-estimation methods require a binary exposure.\n  Using 'mediator.family' = 'gaussian'")
     }
-    
     Mfam <- allowed_families$gaussian
     a <- fit.G_estimation(Y,M,X,Z,Xfam(),compute_CUE=TRUE,weights=weights) 
-    
+
   }  else if (method=="TTS"){
     ## mediator family
     if(is.character(mediator.family)) {
@@ -149,9 +157,11 @@ print.plmed <- function(object){
 
   cat("\nCall:\n", paste(deparse(a$call), sep = "\n", collapse = "\n"), "\n\n", sep = "")
   cat("Fitting Method: \t",a$Method,
-      "\nExposure GLM family:\t",a$exposure.family,
-      "\nMediator GLM family:\t",a$mediator.family,
-      "\nOutcome  GLM family:\t",a$outcome.family)
+      "\nExposure GLM family:\t",a$exposure.family)
+  if (!is.null(a$mediator.family)){
+    cat("\nMediator GLM family:\t",a$mediator.family)
+  }
+  cat("\nOutcome  GLM family:\t",a$outcome.family)
 
   cat("\n\nCoefficients:\n")
 
@@ -173,6 +183,5 @@ print.plmed <- function(object){
                     digits = 6))
     
   }
-
 }
 

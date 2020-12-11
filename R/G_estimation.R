@@ -14,7 +14,8 @@
 #' that class) where the left hand side of the formula contains the continuous mediator variable of interest.
 #' @param outcome.formula an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 #' that class) where the left hand side of the formula contains the continuous outcome variable of interest.
-#' @param exposure.family link function for the exposure model, can be either \code{"gaussian"} or \code{"binomial"}
+#' @param exposure.family link function for the exposure model, can be can be a character string naming a family function,
+#'  a family function or the result of a call to a family function. (See \link[stats]{family} for details of family functions.)
 #' @param data an optional data frame, list or environment
 #' (or object coercible by \code{\link{as.data.frame}}  to a data frame)
 #' containing the variables in the model. If not found in data, the
@@ -63,14 +64,14 @@ G_estimation <- function(exposure.formula,mediator.formula,outcome.formula,expos
 
 
 #' @export
-fit.G_estimation <- function(Y,M,X,Z,Xfam=binomial(),compute_CUE=TRUE,weights=rep(1,N)){
+fit.G_estimation <- function(Y,M,X,Z,Xfam=quasibinomial(),compute_CUE=TRUE,weights=rep(1,N)){
   N <- NROW(Y)
   if (is.null(weights)){
     weights <- rep.int(1, N)
   }
   
   #Get initial parameter estimates for Newton Raphson using MLE
-  X.lm <- glm.fit(Z,X,family=quasibinomial(),weights=weights)$coefficients
+  X.lm <- glm.fit(Z,X,family=Xfam,weights=weights)$coefficients
   M.lm <- glm.fit(cbind(X,Z),M,weights=weights)$coefficients
   Y.lm <- glm.fit(cbind(M,X,Z),Y,weights=weights)$coefficients
   

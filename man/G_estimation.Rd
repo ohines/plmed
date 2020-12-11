@@ -23,7 +23,8 @@ that class) where the left hand side of the formula contains the continuous medi
 \item{outcome.formula}{an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 that class) where the left hand side of the formula contains the continuous outcome variable of interest.}
 
-\item{exposure.family}{link function for the exposure model, can be either \code{"gaussian"} or \code{"binomial"}}
+\item{exposure.family}{link function for the exposure model, can be can be a character string naming a family function,
+a family function or the result of a call to a family function. (See \link[stats]{family} for details of family functions.)}
 
 \item{data}{an optional data frame, list or environment
 (or object coercible by \code{\link{as.data.frame}}  to a data frame)
