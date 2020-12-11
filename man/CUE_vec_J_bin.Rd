@@ -10,6 +10,7 @@ CUE_vec_J_bin(
   M,
   Y,
   Z,
+  Xfam = binomial(),
   method = "G",
   weights = rep(1, N),
   med_prop = NULL,

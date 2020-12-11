@@ -2,14 +2,15 @@
 % Please edit documentation in R/TTS.R
 \name{TTS}
 \alias{TTS}
-\title{Estimating Mediated Effects}
+\title{Natural Mediated Effects}
 \usage{
 TTS(
   exposure.formula,
   mediator.formula,
   outcome.formula,
   mediator.family = "gaussian",
-  data
+  data,
+  weights
 )
 }
 \arguments{

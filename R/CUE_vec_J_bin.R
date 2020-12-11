@@ -16,10 +16,11 @@
 #' @return A list containing the newton-raphson step for use with \code{\link[plmed]{newton_raph}}
 #' as well as variance and score estimates.
 #' @export
-CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',weights=rep(1,N),med_prop=NULL,Sig=NULL){
+CUE_vec_J_bin <- function(par,X,M,Y,Z,Xfam=binomial(),method='G',weights=rep(1,N),med_prop=NULL,Sig=NULL){
   theta=par
   N = NROW(M)
-  nt=1 #Assume X is binomial with nt trials
+  x_linkinv <- Xfam$linkinv
+  x_mu.eta  <- Xfam$mu.eta
   
   cue   <- method=='CUE'
   G     <- method=='G'
@@ -39,23 +40,22 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',weights=rep(1,N),med_prop=NULL,
   }
 
   p = floor({d-3}/6) #length of nuisance parameter vector note #beta = theta[1:3]
+  eta1 = Z%*%theta[4:{p+3}]
+  eta2 = Z%*%theta[{p+4}:{2*p+3}]
   
-  p1 = as.vector(plogis(Z%*%theta[4:{p+3}]))
-  p2 = as.vector(plogis(Z%*%theta[{p+4}:{2*p+3}]))
+  p1 = as.vector(x_linkinv(eta1))
+  p2 = as.vector(x_linkinv(eta2))
 
-  x.res1   = X-nt*p1
-  x.res2   = X-nt*p2
+  x.res1   = X-p1
+  x.res2   = X-p2
   m.res1   = M - theta[1]*X - as.vector(Z%*%theta[{2*p+4}:{3*p+3}])
   m.res2   = M - theta[1]*X - as.vector(Z%*%theta[{3*p+4}:{4*p+3}])
   y.res1   = Y - theta[2]*M - theta[3]*X - as.vector(Z%*%theta[{4*p+4}:{5*p+3}])
   y.res2   = Y - theta[2]*M - theta[3]*X - as.vector(Z%*%theta[{5*p+4}:{6*p+3}])
 
-  hdot1     = nt*p1*(1-p1)
-  hdot2     = nt*p2*(1-p2)
-
-  Unit_wts <- sum(weights==1)==N
-  #wt       <- ifelse(Unit_wts,1,weights) #faster than multiplying lots of unncesessary vectors
-  #N.wt     <- ifelse(Unit_wts,N,sum(wt))
+  hdot1 = as.vector(x_mu.eta(eta1))
+  hdot2 = as.vector(x_mu.eta(eta2))
+  
   wt = weights
   N.wt = sum(wt)
 
@@ -104,7 +104,10 @@ CUE_vec_J_bin <- function(par,X,M,Y,Z,method='G',weights=rep(1,N),med_prop=NULL,
     dV5dtheta = -cbind(0,tZ%*%{M*hdot2*wt},tZ%*%{X*hdot2*wt},pp0,-Z.hdotdot2,pp0,pp0,pp0,Z.hdot2)/N.wt
     dV6dtheta = -cbind(0,0,0                     ,pp0,Z.hdot2,pp0,pp0,pp0,pp0)/N.wt
     #How to include wt in sig?
+    #w2 = wt^2*N/N.wt
     w2 = wt^2*N/N.wt
+    #w2 = (wt*N/N.wt)^2
+    #w2 = wt^3*(N/N.wt)^2
     
     sig11 = sum(x.res1^2*m.res1^2*w2)/N.wt
     sig22 = sum(m.res2^2*y.res1^2*w2)/N.wt

@@ -14,16 +14,21 @@
 #' that class) where the left hand side of the formula contains the continuous mediator variable of interest.
 #' @param outcome.formula an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 #' that class) where the left hand side of the formula contains the continuous outcome variable of interest.
+#' @param exposure.family link function for the exposure model, can be either \code{"gaussian"} or \code{"binomial"}
+#' Must be \code{"binomial"} when using \code{Method="TTS"}
+#' @param mediator.family link function for the mediator model, can be either \code{"gaussian"} or \code{"binomial"}. 
+#' Must be \code{"gaussian"} when using \code{Method="G-estimation"}
 #' @param data an optional data frame, list or environment
 #' (or object coercible by \code{\link{as.data.frame}}  to a data frame)
 #' containing the variables in the model. If not found in data, the
 #' variables are taken from environment(formula), typically the environment from
 #' which \code{plmed} is called.
-#' @param weights an optional vector of ‘prior weights’ to be used in 
+#' @param weights an optional vector of ‘observation weights’ to be used in 
 #' the fitting process. Should be \code{NULL} or a numeric vector.
+#' @param method The mediation fitting method to be used. Can be either \code{"G-estimation"} or \code{"TTS"}
 #'
 #' @return An object of class \code{plmed} with unconstrained parameter estimates,
-#'  estimated standard errors, Wald based and CUE score based test statistics.
+#'  estimated standard errors, Wald based and CUE score based test statistics (G-estimation only).
 #' @examples
 #' #Example on Generated data
 #' N <- 100
@@ -49,9 +54,10 @@
 #'       data=jobs)
 #' @export
 plmed <- function(exposure.formula,mediator.formula,outcome.formula,
-                     data,weights){
+                  exposure.family="binomial",mediator.family="gaussian",
+                  data,weights,method="G-estimation"){
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("exposure.formula","mediator.formula","outcome.formula","data","weights"),names(mf), 0L)
+  m <- match(c("exposure.formula","mediator.formula","outcome.formula","data","weights","method"),names(mf), 0L)
   
   vars <- sapply(1:3,function(i){
     x = as.list(mf[m[c(i)]])
@@ -80,74 +86,61 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   X = as.numeric(df[,2])
   M = as.numeric(df[,3])
   Y = as.numeric(df[,4])
-  Z = cbind(1,scale(df[,-(1:4)]))
+  #Z = cbind(1,scale(df[,-(1:4)]))
+  Z = cbind(1,df[,-(1:4)])
+  
+  allowed_families <- as.environment(list(gaussian = stats::gaussian,binomial = stats::binomial))
+  ## exposure family
+  if (method=="G-estimation"){
+    if(is.character(exposure.family)) {
+      Xfam <- tryCatch({
+        get(exposure.family,mode = "function",
+            envir = allowed_families)
+      },error=function(e){
+        e$message = gettextf("'exposure.family' must be either 'gaussian' or 'binomial' not: %s",mediator.family)
+        stop(e)
+      })
+    }else{
+      stop("'exposure.family' must be either 'gaussian' or 'binomial'")
+    }
+    if(mediator.family != "gaussian"){
+      warning("G-estimation methods require a binary exposure.\n  Using 'mediator.family' = 'gaussian'")
+    }
+    
+    Mfam <- allowed_families$gaussian
+    a <- fit.G_estimation(Y,M,X,Z,Xfam(),compute_CUE=TRUE,weights=weights) 
+    
+  }  else if (method=="TTS"){
+    ## mediator family
+    if(is.character(mediator.family)) {
+      Mfam <- tryCatch({
+        get(mediator.family,mode = "function",
+            envir = allowed_families)
+      },error=function(e){
+        e$message = gettextf("'mediator.family' must be either 'gaussian' or 'binomial' not: %s",mediator.family)
+        stop(e)
+      })
+    }else{
+      stop("'mediator.family' must be either 'gaussian' or 'binomial'")
+    }
+    if(exposure.family != "binomial"){
+      warning("TTS methods require a binary exposure.\n  Using 'exposure.family' = 'binomial'")
+    }
+    Xfam <- allowed_families$binomial
+    a <- fit.TTS(Y,M,X,Z,Mfam(),weights=weights) 
+  }else{
+    stop("Method not recognized")
+  }
+  
 
-  a <- fit.plmed(Y,M,X,Z,compute_CUE=TRUE,weights=weights) 
+  a$Method <- method
   a$call <- mf
+  a$exposure.family = Xfam()$family
+  a$mediator.family = Mfam()$family
+  a$outcome.family =  "gaussian"
   class(a) <- "plmed"
   a
 }
-
-#' @export
-fit.plmed <- function(Y,M,X,Z,compute_CUE=TRUE,weights=rep(1,N)){
-  N <- NROW(Y)
-  if (is.null(weights)){
-    weights <- rep.int(1, N)
-  }
-  
-  #Get initial parameter estimates for Newton Raphson using MLE
-  X.lm <- glm.fit(Z,X,family=quasibinomial(),weights=weights)$coefficients
-  M.lm <- glm.fit(cbind(X,Z),M,weights=weights)$coefficients
-  Y.lm <- glm.fit(cbind(M,X,Z),Y,weights=weights)$coefficients
-  
-  beta  <- c(M.lm[1],Y.lm[1:2]) #target parameters
-  gam.x <- X.lm #nuisance parameters
-  gam.m <- M.lm[-1]
-  gam.y <- Y.lm[-(1:2)]
-  theta <- c(beta,gam.x,gam.x,gam.m,gam.m,gam.y,gam.y)
-  
-  #Do unconstrained fit
-  fit.unconstr <-   newton_raph(CUE_vec_J_bin,theta,X=X,M=M,Y=Y,Z=Z,method='G',weights=weights)
-  theta.unc = fit.unconstr$par
-  
-  a <- list()
-  a$coef <- c(fit.unconstr$par[1:3],fit.unconstr$par[1]*fit.unconstr$par[2])
-  a$std.err      <- sqrt(c(fit.unconstr$val$var,fit.unconstr$par[1]^2*fit.unconstr$val$var[2] +
-                             fit.unconstr$par[2]^2*fit.unconstr$val$var[1])  )
-  a$Wald         <- c(fit.unconstr$val$T_stats,fit.unconstr$val$RSTest)
-  names(a$Wald) <- c('beta1','beta2','NDE','NIDE')
-  
-  if(compute_CUE){
-    w = c(rep.int(1,length(theta.unc)),length(theta)) #upweight solving the lagrange multiplier = faster
-    
-    fit.H0.cue <- tryCatch({
-      newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',weights=weights,med_prop=0,
-                  LSearch = FALSE, w=w,Max.it=50)
-    },error = function(e){
-      tryCatch({
-        newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',weights=weights,med_prop=0,
-                    LSearch = TRUE, w=w)
-      },error = function(e){
-        stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
-    
-    fit.H1.cue <- tryCatch({
-      newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',weights=weights,med_prop=1,
-                  LSearch = FALSE, w=w,Max.it=50)
-    },error = function(e){
-      tryCatch({
-        newton_raph(CUE_vec_J_bin,c(theta.unc,0),X=X,M=M,Y=Y,Z=Z,method='CUE',weights=weights,med_prop=1,
-                    LSearch = TRUE, w=w)
-      },error = function(e){
-        stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
-    
-    a$Score.cue = c(fit.H1.cue$val$score,fit.H0.cue$val$score)
-    
-  }
-
-  return(a)
-  
-}
-
 
 
 #' @export
@@ -155,8 +148,12 @@ print.plmed <- function(object){
   a <- object
 
   cat("\nCall:\n", paste(deparse(a$call), sep = "\n", collapse = "\n"), "\n\n", sep = "")
+  cat("Fitting Method: \t",a$Method,
+      "\nExposure GLM family:\t",a$exposure.family,
+      "\nMediator GLM family:\t",a$mediator.family,
+      "\nOutcome  GLM family:\t",a$outcome.family)
 
-  cat("Coefficients:\n")
+  cat("\n\nCoefficients:\n")
 
   df <- data.frame(Estimate = a$coef, Std.Error = a$std.err ,
                    Wald.value = a$Wald,

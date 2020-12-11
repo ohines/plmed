@@ -10,5 +10,5 @@
 #' @export
 
 IF.glm <- function(object,x=object$x){ 
-  length(object$y)*(x*object$prior.weights*(object$y-object$fitted.values))%*%chol2inv(object$qr$qr)
+  NROW(object$y)*(x*object$prior.weights*(object$y-object$fitted.values))%*%chol2inv(object$qr$qr)
 }
