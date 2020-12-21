@@ -16,7 +16,7 @@
 #' that class) where the left hand side of the formula contains the continuous outcome variable of interest.
 #' @param exposure.family link function for the exposure model, can be can be a character string naming a family function,
 #' a family function or the result of a call to a family function. (See \link[stats]{family} for details of family functions.)
-#' Must be \code{"binomial"} when using \code{Method="TTS"}
+#' Must be \code{"binomial"} when using \code{Method="TTS"}. Must be \code{"none"} when using \code{Method="OLS"}.
 #' @param mediator.family link function for the mediator model, can be either \code{"gaussian"} or \code{"binomial"}. 
 #' Must be \code{"gaussian"} when using \code{Method="G-estimation"}
 #' @param data an optional data frame, list or environment
@@ -26,7 +26,7 @@
 #' which \code{plmed} is called.
 #' @param weights an optional vector of ‘observation weights’ to be used in 
 #' the fitting process. Should be \code{NULL} or a numeric vector.
-#' @param method The mediation fitting method to be used. Can be either \code{"G-estimation"} or \code{"TTS"}
+#' @param method The mediation fitting method to be used. Can be either \code{"G-estimation","TTS"} or \code{"OLS"}
 #'
 #' @return An object of class \code{plmed} with unconstrained parameter estimates,
 #'  estimated standard errors, Wald based and CUE score based test statistics (G-estimation only).
@@ -41,7 +41,9 @@
 #' M <- beta[1]*X + Z +rnorm(N)
 #' Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 #'
-#' plmed(X~Z,M~Z,Y~Z)
+#' plmed(X~Z,M~Z,Y~Z,method="G-estimation")
+#' plmed(X~Z,M~Z,Y~Z,method="TTS")
+#' plmed(X~Z,M~Z,Y~Z,method="OLS")
 #'
 #'
 #' #Example on JobsII data from the mediation package
@@ -57,22 +59,43 @@
 plmed <- function(exposure.formula,mediator.formula,outcome.formula,
                   exposure.family="binomial",mediator.family="gaussian",
                   data,weights,method="G-estimation"){
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("exposure.formula","mediator.formula","outcome.formula","data","weights","method"),names(mf), 0L)
+  cl <- match.call(expand.dots = FALSE)
+  m <- match(c("exposure.formula","mediator.formula","outcome.formula","data","weights","method"),names(cl), 0L)
   
-  vars <- sapply(1:3,function(i){
-    x = as.list(mf[m[c(i)]])
-    tf = do.call(terms,list(x=x[[1]]))
-    if(attr(tf,'response')!=1){
-      stop(gettextf("Missing reponse variable in %s",names(mf)[i]), domain = NA)
-    }
+  # Process formulas in a similar way to stats::glm
+  
+  xf <- cl[c(1,m[c(1,4,5)])]
+  mf <- cl[c(1,m[c(2,4,5)])]
+  yf <- cl[c(1,m[c(3,4,5)])]
+  xf[[1L]] <- mf[[1L]]  <- yf[[1L]] <- quote(stats::model.frame)
+  xf$drop.unused.levels <- mf$drop.unused.levels <- yf$drop.unused.levels <- TRUE
+  names(xf)[2] <- names(mf)[2] <- names(yf)[2] <- "formula"
+  
+  xf <- eval(xf, parent.frame())
+  mf <- eval(mf, parent.frame())
+  yf <- eval(yf, parent.frame())
+  
+  X <- model.response(xf, "any")
+  M <- model.response(mf, "any")
+  Y <- model.response(yf, "any")
+  
+  if(is.null(X)|is.null(M)|is.null(Y)){
+    stop("All formulas must have a response variable")
+  }
+  
+  xt <- attr(xf, "terms") #allow model.frame to have updated it
+  mt <- attr(mf, "terms")
+  yt <- attr(yf, "terms") 
+
+  
+  vars <- lapply(list(xt,mt,yt),function(tf){
     varnames = vapply(tf,function(x) {
       paste(deparse(x,width.cutoff = 500L, backtick = !is.symbol(x) && is.language(x)),collapse = " ")}, " ")[-1]
     (varnames)
   })
+  vars <- simplify2array(vars)
 
-  PL_formula = reformulate(c(vars[1,],vars[2,]))
-  dft = append(list(formula = PL_formula,
+  dft = append(list(formula = reformulate(c(vars[2,])),
                     drop.unused.levels = TRUE,
                     na.action=na.omit),as.list(mf[m[4:5]]))
   df = do.call(stats::model.frame,dft,envir = parent.frame())
@@ -81,14 +104,9 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   if( !is.null(weights) && any(weights < 0) ){
     stop("negative weights not allowed")
   }
-    
-  df <- model.matrix(attr(df, "terms"),df)
   
-  X = as.numeric(df[,2])
-  M = as.numeric(df[,3])
-  Y = as.numeric(df[,4])
-  #Z = cbind(1,scale(df[,-(1:4)]))
-  Z = cbind(1,df[,-(1:4)])
+  df <- model.matrix(attr(df, "terms"),df)
+  Z = cbind(1,scale(df[,-1]))
   
   allowed_families <- as.environment(list(gaussian = stats::gaussian,binomial = stats::binomial))
   ## exposure family
@@ -97,21 +115,8 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
       Xfam <- get(exposure.family, mode = "function", envir = parent.frame())
     if(is.function(exposure.family)) Xfam <- exposure.family()
     if(is.null(Xfam()$family)) {
-      #print(exposure.family)
       stop("'exposure.family' not recognized")
     }
-    
-    #if(is.character(exposure.family)) {
-    #  Xfam <- tryCatch({
-    #    get(exposure.family,mode = "function",
-    #        envir = allowed_families)
-    #  },error=function(e){
-    #    e$message = gettextf("'exposure.family' must be either 'gaussian' or 'binomial' not: %s",mediator.family)
-    #    stop(e)
-    #  })
-    #}else{
-    #  stop("'exposure.family' must be either 'gaussian' or 'binomial'")
-    #}
     if(mediator.family != "gaussian"){
       warning("G-estimation methods require a binary exposure.\n  Using 'mediator.family' = 'gaussian'")
     }
@@ -136,13 +141,17 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     }
     Xfam <- allowed_families$binomial
     a <- fit.TTS(Y,M,X,Z,Mfam(),weights=weights) 
+  } else if(method == "OLS"){
+    Xfam <- function() list(family="none")
+    Mfam <- allowed_families$gaussian
+    a <- fit.ols(Y,M,X,Z,weights=weights) 
   }else{
     stop("Method not recognized")
   }
   
 
   a$Method <- method
-  a$call <- mf
+  a$call <- cl
   a$exposure.family = Xfam()$family
   a$mediator.family = Mfam()$family
   a$outcome.family =  "gaussian"
@@ -172,16 +181,15 @@ print.plmed <- function(object){
   printCoefmat(df, digits = 6, signif.stars = T,na.print = "NA",
                tst.ind = 3,P.values=T,has.Pvalue=T)
 
-  print_scores = !is.null(a$Score.cue)
+  print_scores = !is.null(a$score)
   if(print_scores){
-    cat('\nCUE Score Test No-Direct-Effect:',formatC(a$Score.cue[1], digits = 6),'with p-value:',
-        format.pval(pchisq(a$Score.cue[1],df=1,lower.tail = F),
-                    digits = 6))
-    
-    cat('\nCUE Score Test No-Mediation:\t',formatC(a$Score.cue[2], digits = 6),'with p-value:',
-        format.pval(pchisq(a$Score.cue[2],df=1,lower.tail = F),
-                    digits = 6))
-    
+    for (sc in (1:length(a$score)) ){
+      cat('\n',names(a$score)[sc],'Score:',formatC(a$score[sc], digits = 6),'with p-value:',
+          format.pval(pchisq(a$score[sc],df=1,lower.tail = F),
+                      digits = 6))
+      
+    }
   }
+  
 }
 

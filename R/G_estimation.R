@@ -90,7 +90,10 @@ fit.G_estimation <- function(Y,M,X,Z,Xfam=quasibinomial(),compute_CUE=TRUE,weigh
   a$std.err      <- sqrt(c(fit.unconstr$val$var,fit.unconstr$par[1]^2*fit.unconstr$val$var[2] +
                              fit.unconstr$par[2]^2*fit.unconstr$val$var[1])  )
   a$Wald         <- c(fit.unconstr$val$T_stats,fit.unconstr$val$RSTest)
-  names(a$Wald) <- c('beta1','beta2','NDE','NIDE')
+  names(a$Wald) <- names(a$coef) <- names(a$std.err) <- c('X_on_M','M_on_Y','NDE','NIDE')
+  a$Wald <- a$Wald[c(3,4,1,2)]
+  a$coef <- a$coef[c(3,4,1,2)]
+  a$std.err <- a$std.err[c(3,4,1,2)]
   
   if(compute_CUE){
     w = c(rep.int(1,length(theta.unc)),length(theta)) #upweight solving the lagrange multiplier = faster
@@ -115,8 +118,9 @@ fit.G_estimation <- function(Y,M,X,Z,Xfam=quasibinomial(),compute_CUE=TRUE,weigh
       },error = function(e){
         stop(gettextf("Numerical Error in CUE Calculation."), domain = NA)})})
     
-    a$Score.cue = c(fit.H1.cue$val$score,fit.H0.cue$val$score)
-    
+    a$score = c(CUE_0 = fit.H0.cue$val$score,
+                CUE_1 = fit.H1.cue$val$score)
+    names(a$score) <- c("CUE Mediation", "CUE Direct-Effect")
   }
   
   return(a)

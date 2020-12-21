@@ -27,7 +27,7 @@ that class) where the left hand side of the formula contains the continuous outc
 
 \item{exposure.family}{link function for the exposure model, can be can be a character string naming a family function,
 a family function or the result of a call to a family function. (See \link[stats]{family} for details of family functions.)
-Must be \code{"binomial"} when using \code{Method="TTS"}}
+Must be \code{"binomial"} when using \code{Method="TTS"}. Must be \code{"none"} when using \code{Method="OLS"}.}
 
 \item{mediator.family}{link function for the mediator model, can be either \code{"gaussian"} or \code{"binomial"}. 
 Must be \code{"gaussian"} when using \code{Method="G-estimation"}}
@@ -41,7 +41,7 @@ which \code{plmed} is called.}
 \item{weights}{an optional vector of ‘observation weights’ to be used in 
 the fitting process. Should be \code{NULL} or a numeric vector.}
 
-\item{method}{The mediation fitting method to be used. Can be either \code{"G-estimation"} or \code{"TTS"}}
+\item{method}{The mediation fitting method to be used. Can be either \code{"G-estimation","TTS"} or \code{"OLS"}}
 }
 \value{
 An object of class \code{plmed} with unconstrained parameter estimates,
@@ -67,7 +67,9 @@ X <- rbinom(N,1,plogis(Z))
 M <- beta[1]*X + Z +rnorm(N)
 Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 
-plmed(X~Z,M~Z,Y~Z)
+plmed(X~Z,M~Z,Y~Z,method="G-estimation")
+plmed(X~Z,M~Z,Y~Z,method="TTS")
+plmed(X~Z,M~Z,Y~Z,method="OLS")
 
 
 #Example on JobsII data from the mediation package
