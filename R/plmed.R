@@ -69,6 +69,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   yf <- cl[c(1,m[c(3,4,5)])]
   xf[[1L]] <- mf[[1L]]  <- yf[[1L]] <- quote(stats::model.frame)
   xf$drop.unused.levels <- mf$drop.unused.levels <- yf$drop.unused.levels <- TRUE
+  xf$na.action <- mf$na.action <- yf$na.action <- na.pass
   names(xf)[2] <- names(mf)[2] <- names(yf)[2] <- "formula"
   
   xf <- eval(xf, parent.frame())
@@ -86,7 +87,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
   xt <- attr(xf, "terms") #allow model.frame to have updated it
   mt <- attr(mf, "terms")
   yt <- attr(yf, "terms") 
-
+  
   
   vars <- lapply(list(xt,mt,yt),function(tf){
     varnames = vapply(tf,function(x) {
@@ -94,19 +95,31 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     (varnames)
   })
   vars <- simplify2array(vars)
-
+  
   dft = append(list(formula = reformulate(c(vars[2,])),
                     drop.unused.levels = TRUE,
-                    na.action=na.omit),as.list(mf[m[4:5]]))
+                    na.action=na.pass),as.list(cl[m[4:5]]))
   df = do.call(stats::model.frame,dft,envir = parent.frame())
-  
   weights <- model.weights(df)
-  if( !is.null(weights) && any(weights < 0) ){
-    stop("negative weights not allowed")
-  }
   
   df <- model.matrix(attr(df, "terms"),df)
   Z = cbind(1,scale(df[,-1]))
+  
+  keeps <- (complete.cases(X)&
+              complete.cases(Y)&
+              complete.cases(M)&
+              complete.cases(Z))
+  X = X[keeps]
+  M = M[keeps]
+  Y = Y[keeps]
+  Z = Z[keeps,]
+  
+  if( !is.null(weights) && any(weights < 0) ){
+    stop("negative weights not allowed")
+  }else{
+    weights <- weights[keeps]
+  }
+  
   
   allowed_families <- as.environment(list(gaussian = stats::gaussian,binomial = stats::binomial))
   ## exposure family
@@ -122,7 +135,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     }
     Mfam <- allowed_families$gaussian
     a <- fit.G_estimation(Y,M,X,Z,Xfam(),compute_CUE=TRUE,weights=weights) 
-
+    
   }  else if (method=="TTS"){
     ## mediator family
     if(is.character(mediator.family)) {
@@ -149,7 +162,7 @@ plmed <- function(exposure.formula,mediator.formula,outcome.formula,
     stop("Method not recognized")
   }
   
-
+  
   a$Method <- method
   a$call <- cl
   a$exposure.family = Xfam()$family

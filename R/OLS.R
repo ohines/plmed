@@ -20,7 +20,7 @@ fit.ols <- function(Y,M,X,Z,weights=rep(1,N)){
   Sob <- T1_ols*T2_ols/(T1_ols+T2_ols)
   a$Wald = c(T3_ols, Sob,T1_ols,T2_ols )
   a$coefs = c(beta[3], beta[1]*beta[2] , beta[1], beta[2])
-  a$std.err = sqrt(a$Wald)/a$coef
+  a$std.err = abs(a$coef/sqrt(a$Wald))
   
   a$score <-  min(T1_ols,T2_ols)
   names(a$score) <- "LR Mediation"
