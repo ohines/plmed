@@ -1,9 +1,11 @@
 #' Natural Mediated Effects
 #'
 #' \code{TTS} is used to estimate natural direct and natural indirect effects using the methods of 
-#' Tchetgen Tchetgen Shpitser 2012. This implementation can be used with a binary exposure, binary or continuous
+#' Tchetgen Tchetgen Shpitser (2012). This implementation can be used with a binary exposure, binary or continuous
 #' mediator, and continuous outcome. Linear models are used to model the conditional expectation of continuous quantities,
-#' and logisitc regression models are used to model binary quantities.
+#' and logisitc regression models are used to model binary quantities. As with the \code{\link{plmed}} function,
+#' the confounder set is the union terms in the \code{exposure.formula},
+#' \code{mediator.formula}, and \code{outcome.formula}. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}.
 #'
 #' @param exposure.formula an object of class \code{\link[stats]{formula}} (or one that can be coerced to that class) 
 #' where the left hand side of the formula contains the binary exposure variable of interest.
@@ -17,7 +19,7 @@
 #' containing the variables in the model. If not found in data, the
 #' variables are taken from environment(formula), typically the environment from
 #' which \code{TTS} is called.
-#' @return An object of class \code{TTS} with Total Effect (TE), Natural Direct Effect (NDE) and 
+#' @return An object of class \code{plmed} with Total Effect (TE), Natural Direct Effect (NDE) and 
 #' Natural Indirect Effect (NIDE) estimates, with estimated standard errors, and
 #' Wald based test statistics.
 #' @examples
@@ -108,10 +110,10 @@ fit.TTS <- function(Y,M,X,Z,Mfam,weights=rep(1,N)){
   
   #density ratio, K, its derivatives and IF parts are different for different distributions
   if(binM){ 
-    K    <- m0/m1       #f(M_i|X=0,Z_i)/f(M_i|X=1,Z_i)
-    D_K  <- K*( m1-m0 ) #derivative of K   wrt. f(z)
-    D_Kb1<- K*(m1-1)    #derivative of K   wrt. beta1
-    density_comp = 0    #part of IF_Po1M0 which depends on other paramerters of f(m|x,z)
+    K    <- (m0+M-1)/(m1+M-1)       #f(M_i|X=0,Z_i)/f(M_i|X=1,Z_i)
+    D_Kb1<- -K*m1*(1-m1)/(m1+M-1)   #derivative of K   wrt. beta1
+    D_K  <- K*m0*(1-m0)/(m0+M-1) + D_Kb1 #derivative of K   wrt. f(z)
+    density_comp = 0    #part of IF_Po1M0 which depends on other parameters of f(m|x,z)
     
   } else if(contM) {
     M.var <- M.mod$deviance/N.wt       #Estimate of normal variance
@@ -121,7 +123,7 @@ fit.TTS <- function(Y,M,X,Z,Mfam,weights=rep(1,N)){
     #sigma_M (Through K) #only for continuous mediators
     bar_sig_Po1M0 = -sum(K*X_PS*(Y-y1)*(beta[1]/2 - M.res0)*wt)*beta[1]/M.var^2/N.wt
     IFsig = ((M.mod$residuals)^2 - M.var)*wt
-    density_comp = bar_sig_Po1M0 * IFsig     #part of IF_Po1M0 which depends on other paramerters of f(m|x,z)
+    density_comp = bar_sig_Po1M0 * IFsig     #part of IF_Po1M0 which depends on other parameters of f(m|x,z)
   }
 
  

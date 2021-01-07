@@ -2,7 +2,7 @@
 % Please edit documentation in R/plmed.R
 \name{plmed}
 \alias{plmed}
-\title{Partially Linear Mediation using G-estimation}
+\title{Partially Linear Mediation}
 \usage{
 plmed(
   exposure.formula,
@@ -49,12 +49,11 @@ An object of class \code{plmed} with unconstrained parameter estimates,
 }
 \description{
 \code{plmed} is used to fit mediation effects for a continuous outcome
-given a single continuous mediator, binary exposure, and set of
-variables which adjust for confounding. It is assumed that the
-outcome and mediator models are linear and the exposure model is
-logisitic. It uses a G-estimation procedure to estimate indirect and
-direct effect, with a Bias-Reduced strategy used to estimate
-parameters in confounder models. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}
+given a single continuous or binary mediator, a continuous or binary exposure, and a set of
+variables which adjust for confounding. This function supports three fitting methods:
+those based on "\code{\link[=G_estimation]{G-estimation}}", "\code{\link{TTS}}", and "\code{\link{OLS}}".
+For all methods, the confounder variable set is the union of terms in the \code{exposure.formula},
+\code{mediator.formula}, and \code{outcome.formula}. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}.
 }
 \examples{
 #Example on Generated data
@@ -78,7 +77,9 @@ jobs <- mediation::jobs
 Z.formula = c('econ_hard','sex','age','occp',
               'marital','nonwhite','educ','income')
 plmed(reformulate(Z.formula,response='treat'),
-      reformulate(Z.formula,response='job_seek'),
-      reformulate(Z.formula,response='depress2'),
+      reformulate("1",response='job_seek'),
+      reformulate("1",response='depress2'),
       data=jobs)
+      
+#Only one of the formulas must include the confounder variables
 }

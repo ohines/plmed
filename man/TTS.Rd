@@ -32,15 +32,17 @@ variables are taken from environment(formula), typically the environment from
 which \code{TTS} is called.}
 }
 \value{
-An object of class \code{TTS} with Total Effect (TE), Natural Direct Effect (NDE) and 
+An object of class \code{plmed} with Total Effect (TE), Natural Direct Effect (NDE) and 
 Natural Indirect Effect (NIDE) estimates, with estimated standard errors, and
 Wald based test statistics.
 }
 \description{
 \code{TTS} is used to estimate natural direct and natural indirect effects using the methods of 
-Tchetgen Tchetgen Shpitser 2012. This implementation can be used with a binary exposure, binary or continuous
+Tchetgen Tchetgen Shpitser (2012). This implementation can be used with a binary exposure, binary or continuous
 mediator, and continuous outcome. Linear models are used to model the conditional expectation of continuous quantities,
-and logisitc regression models are used to model binary quantities.
+and logisitc regression models are used to model binary quantities. As with the \code{\link{plmed}} function,
+the confounder set is the union terms in the \code{exposure.formula},
+\code{mediator.formula}, and \code{outcome.formula}. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}.
 }
 \examples{
 #Example on Generated data

@@ -4,9 +4,11 @@
 #' given a single continuous mediator, binary exposure, and set of
 #' variables which adjust for confounding. It is assumed that the
 #' outcome and mediator models are linear and the exposure model is
-#' logisitic. It uses a G-estimation procedure to estimate indirect and
-#' direct effect, with a Bias-Reduced strategy used to estimate
-#' parameters in confounder models. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}
+#' logisitic. It uses a G-estimation procedure to estimate direct and
+#' indirect effects, with a Bias-Reduced strategy used to estimate
+#' nuisance parameters.  As with the \code{\link{plmed}} function,
+#' the confounder set is the union terms in the \code{exposure.formula},
+#' \code{mediator.formula}, and \code{outcome.formula}. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}.
 #'
 #' @param exposure.formula an object of class "\code{\link[stats]{formula}}" (or one that can be coerced to
 #' that class) where the left hand side of the formula contains the binary exposure variable of interest.
@@ -24,8 +26,10 @@
 #' @param weights an optional vector of ‘prior weights’ to be used in 
 #' the fitting process. Should be \code{NULL} or a numeric vector.
 #'
-#' @return An object of class \code{plmed} with unconstrained parameter estimates,
-#'  estimated standard errors, Wald based and CUE score based test statistics.
+#' #' @return An object of class \code{plmed} with, Natural Direct Effect (NDE) and 
+#' Natural Indirect Effect (NIDE) estimates, as well as the effect of exposure on mediator (X_on_M)
+#' and the effect of mediator on outcome (M_on_Y). Estimated standard errors, and
+#' Wald based test statistics are also returned, as is the Continuously Updated Estimator score based test statistics.
 #' @examples
 #' #Example on Generated data
 #' N <- 100
@@ -37,7 +41,7 @@
 #' M <- beta[1]*X + Z +rnorm(N)
 #' Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 #'
-#' plmed(X~Z,M~Z,Y~Z)
+#' G_estimation(X~Z,M~Z,Y~Z)
 #'
 #'
 #' #Example on JobsII data from the mediation package

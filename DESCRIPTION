@@ -1,12 +1,17 @@
 Package: plmed
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Causal Mediation Effects For Partially Linear Models
 Version: 0.1.0
 Author: Oliver Hines
 Maintainer: Oliver Hines <oliver.hines@lshtm.ac.uk>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: This package can be used to estimate causal mediation effects
+    (natural direct and indirect effects) in models where the outcome is modelled
+    by a linear model which include mediator and exposure as covariates.
+    The current package includes G-estimation methods, non-parametric influence 
+    curve based methods (TTS) and methods based on Ordinary Least Squares (OLS).
+    Each of these require different combinations of mediator and exposure models,
+    as described in the documentation.
 License: Open
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1

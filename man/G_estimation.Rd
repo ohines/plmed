@@ -33,20 +33,23 @@ variables are taken from environment(formula), typically the environment from
 which \code{plmed} is called.}
 
 \item{weights}{an optional vector of ‘prior weights’ to be used in 
-the fitting process. Should be \code{NULL} or a numeric vector.}
-}
-\value{
-An object of class \code{plmed} with unconstrained parameter estimates,
- estimated standard errors, Wald based and CUE score based test statistics.
+the fitting process. Should be \code{NULL} or a numeric vector.
+
+#' @return An object of class \code{plmed} with, Natural Direct Effect (NDE) and 
+Natural Indirect Effect (NIDE) estimates, as well as the effect of exposure on mediator (X_on_M)
+and the effect of mediator on outcome (M_on_Y). Estimated standard errors, and
+Wald based test statistics are also returned, as is the Continuously Updated Estimator score based test statistics.}
 }
 \description{
 \code{plmed} is used to fit mediation effects for a continuous outcome
 given a single continuous mediator, binary exposure, and set of
 variables which adjust for confounding. It is assumed that the
 outcome and mediator models are linear and the exposure model is
-logisitic. It uses a G-estimation procedure to estimate indirect and
-direct effect, with a Bias-Reduced strategy used to estimate
-parameters in confounder models. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}
+logisitic. It uses a G-estimation procedure to estimate direct and
+indirect effects, with a Bias-Reduced strategy used to estimate
+nuisance parameters.  As with the \code{\link{plmed}} function,
+the confounder set is the union terms in the \code{exposure.formula},
+\code{mediator.formula}, and \code{outcome.formula}. Missing data behaviour is always \code{\link[stats]{na.action}=na.omit}.
 }
 \examples{
 #Example on Generated data
@@ -59,7 +62,7 @@ X <- rbinom(N,1,plogis(Z))
 M <- beta[1]*X + Z +rnorm(N)
 Y <- beta[2]*M + beta[3]*X + Z +rnorm(N)
 
-plmed(X~Z,M~Z,Y~Z)
+G_estimation(X~Z,M~Z,Y~Z)
 
 
 #Example on JobsII data from the mediation package
